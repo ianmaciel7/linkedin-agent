@@ -1,0 +1,30 @@
+﻿schema: spec-driven
+
+context: |
+  Project: linkedin-agent
+  Application type: Python app built with Google's Agent Development Kit (ADK)
+  Runtime and dependencies: Python 3.11+ managed exclusively with uv
+  ADK entry point: app/agent.py defines root_agent and the App; app/__init__.py exports app
+  Testing: pytest for unit and integration tests; ADK evaluations for agent behavior
+  Quality: Ruff for linting and formatting; public functions and tools are typed
+  Safety: externally visible LinkedIn actions require explicit user confirmation immediately before execution
+  Privacy: credentials, tokens, cookies, private messages, and personal data must not be committed or logged
+  Platform policy: no scraping, evasion, spam, bulk outreach, or deceptive engagement behavior
+
+rules:
+  proposal:
+    - State the user problem, intended outcome, scope, and explicit non-goals.
+    - Identify externally visible actions, sensitive data, permissions, and platform-policy impact.
+    - Call out new dependencies, configuration, migrations, and deployment impact.
+  specs:
+    - Write normative requirements using MUST or SHALL.
+    - Include Given/When/Then scenarios for success, validation failure, permission denial, and upstream failure where relevant.
+    - Distinguish drafting or previewing from execution of LinkedIn actions.
+  design:
+    - Preserve the standard Google ADK App and root_agent structure.
+    - Describe tool boundaries, state and session handling, retries, idempotency, observability, and privacy decisions.
+    - Prefer official APIs and SDKs and explain any exception.
+  tasks:
+    - Keep tasks small, ordered, and independently verifiable.
+    - Include unit tests, integration tests, ADK evaluations, documentation, and uv lock updates when applicable.
+    - End with uv-based test, lint, format, and OpenSpec validation checks.
