@@ -50,6 +50,8 @@ openspec validate --all
 
 Use the commands actually defined by the repository if they later differ. Do not hand-edit `uv.lock`; regenerate it with `uv` when dependencies change. Do not deploy or run cloud-changing commands unless the user explicitly requests it.
 
+Repo-local skills that must be shared across environments live under ``.agents/skills/``. When the repository adds versioned skill sources, use ``./.agents/skills/skill.sh list`` to inspect the lock file and ``./.agents/skills/skill.sh sync`` to materialize the pinned skills into the workspace copy.
+
 ## OpenSpec workflow
 
 `openspec/specs/` is the source of truth for accepted behavior. `openspec/changes/` contains proposed deltas until they are implemented, validated, and archived.
@@ -112,5 +114,7 @@ Every behavior change must include proportionate verification:
 6. Summarize changed behavior, verification performed, and any remaining risk or unverified external dependency.
 
 Do not modify generated artifacts, lockfiles, deployment state, or unrelated user changes unless the task requires it.
+
+
 
 

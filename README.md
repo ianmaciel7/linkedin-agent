@@ -25,6 +25,7 @@ An ADK-based assistant for LinkedIn workflow automation and growth support.
 
 - Use `uv` for dependency management and execution.
 - Install the Google ADK runtime with `uv sync`, then run the app with `uv run agents-cli playground` or `uv run agents-cli run "<prompt>"` once credentials are configured.
+- Keep repo-local skills under ``.agents/skills/``; use ``./.agents/skills/skill.sh list`` to inspect the pinned set and ``./.agents/skills/skill.sh sync`` to materialize them in a fresh environment.
 - Keep changes aligned with the spec-driven workflow before implementation.
 - Validate updates with tests and linting as the app grows.
 
@@ -34,5 +35,7 @@ An ADK-based assistant for LinkedIn workflow automation and growth support.
 - Scheduled post drafting and publishing workflows.
 - Connection request assistance and outreach sequencing.
 - Activity reminders, follow-ups, and lightweight reporting.
+
+
 
 
