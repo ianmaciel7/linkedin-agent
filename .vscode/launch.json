@@ -1,0 +1,43 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ADK: Run Agent (Interactive)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "google.adk.cli",
+      "args": [
+        "run",
+        "--verbose"
+      ],
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "ADK: Start Web Playground",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "google.adk.cli",
+      "args": [
+        "web",
+        "--reload_agents"
+      ],
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: Debug Pytest Tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${workspaceFolder}/tests"
+      ],
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

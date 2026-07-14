@@ -62,6 +62,7 @@ Use the commands actually defined by the repository if they later differ. Do not
 - Mark tasks complete only after the corresponding implementation and verification are complete.
 - Run `openspec validate --all` before handoff. Archive a change only after implementation is complete and the user requests or approves archival.
 - Do not edit generated OpenSpec agent integrations manually; refresh them with `openspec update` after upgrading OpenSpec or changing supported tools. In this repository, the generated integration files live under `.agents/`.
+- Any new skill added for this project must also have an equivalent checked-in version under `.agents/skills/`.
 ## Implementation conventions
 
 - Add type annotations to public functions and tool inputs/outputs.
