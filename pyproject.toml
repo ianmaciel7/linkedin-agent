@@ -9,18 +9,22 @@ description = "An ADK-based assistant for LinkedIn workflow automation and growt
 requires-python = ">=3.11"
 dependencies = [
   "google-adk>=0.1.0",
+  "hypothesis>=6.156.6",
   "pytest>=8.0.0",
+  "pytest-cov>=7.1.0",
+  "pytest-mock>=3.15.1",
+  "pytest-xdist>=3.8.0",
 ]
 
 [tool.setuptools]
-packages = ["app"]
+packages = ["app", "app.linkedin", "app.tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.pyrefly]
 python-interpreter-path = ".venv/bin/python"
-
-
-
+project-excludes = [
+    "**/__pyrefly_virtual__/**",
+]
 

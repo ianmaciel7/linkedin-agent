@@ -1,0 +1,13 @@
+# Target Python 3.11
+target-version = "py311"
+
+# Line length matching the formatter defaults
+line-length = 88
+
+[lint]
+# Enable Pyflakes (F), Pycodestyle (E), and isort (I)
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[lint.isort]
+known-first-party = ["app"]

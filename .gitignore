@@ -149,6 +149,8 @@ activemq-data/
 
 # Environments
 .env
+.env.local
+.env.prod
 .envrc
 .venv
 env/
@@ -220,4 +222,5 @@ __marimo__/
 # AI agent directories
 .claude/
 .codex/
+
 
