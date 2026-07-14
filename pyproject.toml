@@ -25,6 +25,8 @@ testpaths = ["tests"]
 [tool.pyrefly]
 python-interpreter-path = ".venv/bin/python"
 project-excludes = [
+    "**/pyrefly_virtual/**",
     "**/__pyrefly_virtual__/**",
 ]
+
 
