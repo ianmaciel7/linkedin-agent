@@ -15,5 +15,6 @@ root_agent = Agent(
     description="A LinkedIn workflow assistant for drafting, planning, and review support.",
 )
 
-app = App(root_agent=root_agent)
+app = App(name="app", root_agent=root_agent)
+
 

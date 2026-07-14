@@ -18,5 +18,9 @@ packages = ["app"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.pyrefly]
+python-interpreter-path = ".venv/bin/python"
+
+
 
 
