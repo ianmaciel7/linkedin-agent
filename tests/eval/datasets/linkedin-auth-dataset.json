@@ -10,6 +10,61 @@
           }
         ]
       }
+    },
+    {
+      "eval_case_id": "linkedin-login-state-mismatch",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "I tried the LinkedIn login, but the OAuth callback state did not match. Help me recover safely."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-secure-token-storage-reauthorize",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My stored LinkedIn credential is invalid or expired. Tell me the safe next step to sign in again."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-secure-token-storage-config-error",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "LinkedIn secure token storage is misconfigured. Explain what configuration I need without exposing secrets."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-token-refresh-retry-later",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My saved LinkedIn login expired and the token refresh timed out. Tell me the safe next step without exposing any secret details."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-token-refresh-reauthorize",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My stored LinkedIn session expired and can no longer be refreshed. Explain whether I should retry later or authorize LinkedIn again."
+          }
+        ]
+      }
     }
   ]
 }

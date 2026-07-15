@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
 from app.linkedin.client import (
     JsonValue,
     LinkedInApiClient,
@@ -22,16 +20,20 @@ def make_default_entity() -> JsonValue:
     }
 
 
-@dataclass
 class FakeResponse:
-    status_code: int
-    entity: JsonValue
+    def __init__(self, status_code: int, entity: JsonValue) -> None:
+        self.status_code = status_code
+        self.entity = entity
 
 
-@dataclass
 class FakeTransport:
-    status_code: int = 200
-    entity: JsonValue = field(default_factory=make_default_entity)
+    def __init__(
+        self,
+        status_code: int = 200,
+        entity: JsonValue | None = None,
+    ) -> None:
+        self.status_code = status_code
+        self.entity = make_default_entity() if entity is None else entity
 
     def get(self, resource_path: str, access_token: str) -> LinkedInApiResponse:
         self.resource_path = resource_path

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -21,7 +20,9 @@ from app.linkedin.client import (
 )
 from app.linkedin.oauth import (
     LinkedInOAuthError,
+    LinkedInOAuthRefreshTransientError,
     LinkedInOAuthSmokeResult,
+    LinkedInOAuthToken,
     build_auth_config,
     run_linkedin_oauth_browser_smoke_test,
     run_linkedin_oauth_smoke_test,
@@ -29,19 +30,21 @@ from app.linkedin.oauth import (
 from app.linkedin.token_store import (
     LinkedInTokenStoreConfigurationError,
     StoredLinkedInCredential,
+    StoredLinkedInCredentialRecord,
 )
 from app.settings import (
     LinkedInApiSettings,
     LinkedInOAuthSettings,
     LinkedInTokenStorageSettings,
 )
+from app.tools.linkedin_api_check import run_linkedin_api_test
 from app.tools.linkedin_login_service import _run_linkedin_login_service
 
 
-@dataclass
 class FakeResponse:
-    _status_code: int
-    _entity: JsonValue
+    def __init__(self, status_code: int, entity: JsonValue) -> None:
+        self._status_code = status_code
+        self._entity = entity
 
     @property
     def status_code(self) -> int:
@@ -52,14 +55,17 @@ class FakeResponse:
         return self._entity
 
 
-@dataclass
 class FakeTransport:
+    def __init__(self) -> None:
+        self.resource_path = ""
+        self.access_token = ""
+
     def get(self, resource_path: str, access_token: str) -> LinkedInApiResponse:
         self.resource_path = resource_path
         self.access_token = access_token
         return FakeResponse(
-            _status_code=200,
-            _entity={
+            status_code=200,
+            entity={
                 "sub": "user-456",
                 "name": "Avery Example",
                 "email": "avery@example.com",
@@ -67,10 +73,10 @@ class FakeTransport:
         )
 
 
-@dataclass
 class DeniedResponse:
-    _status_code: int = 403
-    _entity: JsonValue = ""
+    def __init__(self, status_code: int = 403, entity: JsonValue = "") -> None:
+        self._status_code = status_code
+        self._entity = entity
 
     @property
     def status_code(self) -> int:
@@ -81,18 +87,21 @@ class DeniedResponse:
         return self._entity
 
 
-@dataclass
 class DeniedTransport:
+    def __init__(self) -> None:
+        self.resource_path = ""
+        self.access_token = ""
+
     def get(self, resource_path: str, access_token: str) -> LinkedInApiResponse:
         self.resource_path = resource_path
         self.access_token = access_token
         return DeniedResponse()
 
 
-@dataclass
 class UpstreamFailureResponse:
-    _status_code: int = 500
-    _entity: JsonValue = ""
+    def __init__(self, status_code: int = 500, entity: JsonValue = "") -> None:
+        self._status_code = status_code
+        self._entity = entity
 
     @property
     def status_code(self) -> int:
@@ -103,20 +112,27 @@ class UpstreamFailureResponse:
         return self._entity
 
 
-@dataclass
 class UpstreamFailureTransport:
+    def __init__(self) -> None:
+        self.resource_path = ""
+        self.access_token = ""
+
     def get(self, resource_path: str, access_token: str) -> LinkedInApiResponse:
         self.resource_path = resource_path
         self.access_token = access_token
         return UpstreamFailureResponse()
 
 
-@dataclass
 class FakeToolContext:
-    saved_credential: AuthCredential | None = None
-    auth_response: AuthCredential | None = None
-    requested_auth_config: object | None = None
-    saved_auth_config: object | None = None
+    def __init__(
+        self,
+        saved_credential: AuthCredential | None = None,
+        auth_response: AuthCredential | None = None,
+    ) -> None:
+        self.saved_credential = saved_credential
+        self.auth_response = auth_response
+        self.requested_auth_config: object | None = None
+        self.saved_auth_config: object | None = None
 
     def request_credential(self, auth_config: object) -> None:
         self.requested_auth_config = auth_config
@@ -133,17 +149,35 @@ class FakeToolContext:
         self.saved_auth_config = auth_config
 
 
-@dataclass
 class FakeTokenStore:
-    stored_credential: StoredLinkedInCredential | None = None
-    save_calls: list[tuple[str, OAuth2Auth, str | None]] | None = None
-    clear_calls: int = 0
-    load_error: Exception | None = None
-    save_error: Exception | None = None
+    def __init__(
+        self,
+        *,
+        stored_credential: StoredLinkedInCredential | None = None,
+        load_error: Exception | None = None,
+        save_error: Exception | None = None,
+    ) -> None:
+        self.stored_credential = stored_credential
+        self.save_calls: list[tuple[str, OAuth2Auth, str | None]] = []
+        self.clear_calls = 0
+        self.load_error = load_error
+        self.save_error = save_error
 
-    def __post_init__(self) -> None:
-        if self.save_calls is None:
-            self.save_calls = []
+    def inspect(
+        self, oauth: LinkedInOAuthSettings
+    ) -> StoredLinkedInCredentialRecord | None:
+        if self.load_error is not None:
+            raise self.load_error
+        if self.stored_credential is None:
+            return None
+        is_expired = (
+            self.stored_credential.expires_at is not None
+            and self.stored_credential.expires_at <= 0
+        )
+        return StoredLinkedInCredentialRecord(
+            credential=self.stored_credential,
+            is_expired=is_expired,
+        )
 
     def load(self, oauth: LinkedInOAuthSettings) -> StoredLinkedInCredential | None:
         if self.load_error is not None:
@@ -251,7 +285,7 @@ def test_run_linkedin_login_service_requests_oauth_when_no_credential_is_availab
         "sub": "user-789",
         "name": "Jordan Example",
     }
-    assert tool_context.requested_auth_config is None
+    assert tool_context.requested_auth_config is not None
 
 
 def test_run_linkedin_login_service_reuses_secure_token_store_before_browser_flow() -> (
@@ -297,6 +331,72 @@ def test_run_linkedin_login_service_reuses_secure_token_store_before_browser_flo
     assert transport.access_token == "stored-token-123"
 
 
+def test_run_linkedin_login_service_refreshes_expired_stored_token_before_browser_flow(
+    monkeypatch,
+) -> None:
+    transport = FakeTransport()
+    settings = LinkedInApiSettings(
+        access_token=None,
+        test_url="https://example.com/test",
+        oauth=LinkedInOAuthSettings(
+            client_id="client-id",
+            client_secret="client-secret",
+            redirect_uri="http://localhost:8000/callback",
+        ),
+        token_storage=LinkedInTokenStorageSettings(
+            path=".secrets/linkedin-token.enc",
+            encryption_key="unused-for-fake-store",
+        ),
+    )
+    client = LinkedInApiClient(settings, transport=transport)
+    token_store = FakeTokenStore(
+        stored_credential=StoredLinkedInCredential(
+            access_token="expired-token-123",
+            refresh_token="refresh-token-123",
+            expires_at=0.0,
+        )
+    )
+
+    def fake_refresh(
+        oauth: LinkedInOAuthSettings,
+        refresh_token: str,
+        *,
+        timeout_seconds: float,
+        session=None,
+    ) -> LinkedInOAuthToken:
+        assert refresh_token == "refresh-token-123"
+        return LinkedInOAuthToken(
+            access_token="refreshed-token-123",
+            refresh_token="refreshed-refresh-123",
+            expires_at=12345.0,
+            expires_in=3600,
+        )
+
+    def fail_if_called(_settings: LinkedInApiSettings) -> LinkedInOAuthSmokeResult:
+        raise AssertionError("browser flow should not run when refresh succeeds")
+
+    monkeypatch.setattr(
+        "app.linkedin.credential_lifecycle.refresh_access_token",
+        lambda *args, **kwargs: fake_refresh(*args, **kwargs),
+    )
+
+    result = asyncio.run(
+        _run_linkedin_login_service(
+            settings=settings,
+            client=client,
+            browser_login_runner=fail_if_called,
+            token_store=token_store,
+        )
+    )
+
+    assert result["ok"] is True
+    assert result["credential_source"] == "secure_token_store_refresh"
+    assert transport.access_token == "refreshed-token-123"
+    assert token_store.stored_credential is not None
+    assert token_store.stored_credential.access_token == "refreshed-token-123"
+    assert token_store.clear_calls == 0
+
+
 def test_run_linkedin_login_service_clears_rejected_stored_token_and_reauthorizes() -> (
     None
 ):
@@ -338,6 +438,101 @@ def test_run_linkedin_login_service_clears_rejected_stored_token_and_reauthorize
     assert token_store.clear_calls == 1
     assert token_store.stored_credential is not None
     assert token_store.stored_credential.access_token == "browser-token-123"
+
+
+def test_run_linkedin_api_test_requires_reauthorization_for_expired_non_refreshable_credential() -> (
+    None
+):
+    settings = LinkedInApiSettings(
+        access_token=None,
+        oauth=LinkedInOAuthSettings(
+            client_id="client-id",
+            client_secret="client-secret",
+            redirect_uri="https://example.com/callback",
+        ),
+        token_storage=LinkedInTokenStorageSettings(
+            path=".secrets/linkedin-token.enc",
+            encryption_key="unused-for-fake-store",
+        ),
+    )
+    result = asyncio.run(
+        run_linkedin_api_test(
+            settings=settings,
+            client=LinkedInApiClient(settings, transport=FakeTransport()),
+            token_store=FakeTokenStore(
+                stored_credential=StoredLinkedInCredential(
+                    access_token="expired-token-123",
+                    refresh_token=None,
+                    expires_at=0.0,
+                )
+            ),
+        )
+    )
+
+    assert result == {
+        "ok": False,
+        "message": (
+            "Stored LinkedIn credential is unavailable or no longer valid. "
+            "Reauthorize LinkedIn from an ADK tool session to continue."
+        ),
+        "error_code": "invalid_stored_credential",
+        "status_code": None,
+        "account_summary": None,
+        "reauthorization_required": True,
+    }
+
+
+def test_run_linkedin_api_test_surfaces_transient_refresh_failure_without_clearing_credential(
+    monkeypatch,
+) -> None:
+    settings = LinkedInApiSettings(
+        access_token=None,
+        oauth=LinkedInOAuthSettings(
+            client_id="client-id",
+            client_secret="client-secret",
+            redirect_uri="https://example.com/callback",
+        ),
+        token_storage=LinkedInTokenStorageSettings(
+            path=".secrets/linkedin-token.enc",
+            encryption_key="unused-for-fake-store",
+        ),
+    )
+    token_store = FakeTokenStore(
+        stored_credential=StoredLinkedInCredential(
+            access_token="expired-token-123",
+            refresh_token="refresh-token-123",
+            expires_at=0.0,
+        )
+    )
+
+    def fake_refresh(*args, **kwargs):
+        raise LinkedInOAuthRefreshTransientError(
+            "LinkedIn OAuth token refresh timed out",
+            error_code="timeout",
+        )
+
+    monkeypatch.setattr(
+        "app.linkedin.credential_lifecycle.refresh_access_token",
+        fake_refresh,
+    )
+
+    result = asyncio.run(
+        run_linkedin_api_test(
+            settings=settings,
+            client=LinkedInApiClient(settings, transport=FakeTransport()),
+            token_store=token_store,
+        )
+    )
+
+    assert result == {
+        "ok": False,
+        "message": "LinkedIn OAuth token refresh timed out",
+        "error_code": "timeout",
+        "status_code": None,
+        "account_summary": None,
+    }
+    assert token_store.clear_calls == 0
+    assert token_store.stored_credential is not None
 
 
 def test_run_linkedin_login_service_surfaces_secure_storage_configuration_error() -> (
@@ -411,7 +606,7 @@ def test_run_linkedin_login_service_surfaces_local_oauth_callback_validation_err
         "status_code": None,
         "account_summary": None,
     }
-    assert tool_context.requested_auth_config is None
+    assert tool_context.requested_auth_config is not None
 
 
 def test_run_linkedin_login_service_reuses_saved_oauth_credential() -> None:
@@ -444,11 +639,13 @@ def test_run_linkedin_login_service_reuses_saved_oauth_credential() -> None:
     )
 
     assert result["ok"] is True
+    assert result["credential_source"] == "adk_tool_context"
     assert result["account_summary"] == {
-        "sub": "user-789",
-        "name": "Jordan Example",
+        "sub": "user-456",
+        "name": "Avery Example",
     }
-    assert tool_context.saved_auth_config is None
+    assert transport.access_token == "oauth-token-123"
+    assert tool_context.saved_auth_config is not None
 
 
 def test_run_linkedin_login_service_saves_adk_oauth_credential_to_secure_store() -> (
@@ -513,23 +710,28 @@ def test_run_linkedin_login_service_maps_permission_denied_after_oauth_auth() ->
             oauth2=OAuth2Auth(access_token="oauth-token-123"),
         )
     )
+    browser_runs: list[str] = []
+
+    def browser_runner(_settings: LinkedInApiSettings) -> LinkedInOAuthSmokeResult:
+        browser_runs.append("called")
+        return fake_browser_login_runner(_settings)
 
     result = asyncio.run(
         _run_linkedin_login_service(
             tool_context=tool_context,
             settings=settings,
             client=client,
-            browser_login_runner=lambda _settings: LinkedInOAuthSmokeResult(
-                ok=False,
-                message="permission denied",
-                status_code=403,
-                userinfo=None,
-            ),
+            browser_login_runner=browser_runner,
         )
     )
 
-    assert result["ok"] is False
-    assert result["status_code"] == 403
+    assert result["ok"] is True
+    assert result["account_summary"] == {
+        "sub": "user-789",
+        "name": "Jordan Example",
+    }
+    assert browser_runs == ["called"]
+    assert tool_context.saved_auth_config is None
 
 
 def test_run_linkedin_login_service_maps_upstream_failure_after_oauth_auth() -> None:

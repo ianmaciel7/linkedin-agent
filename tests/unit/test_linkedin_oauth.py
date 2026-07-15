@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 import socket
-from dataclasses import dataclass
 from threading import Thread
 from urllib.parse import parse_qs, urlparse
 
 import pytest
 import requests
+from requests.exceptions import Timeout as RequestsTimeout
 
 from app.linkedin.oauth import (
     LinkedInOAuthError,
+    LinkedInOAuthRefreshRejectedError,
+    LinkedInOAuthRefreshTransientError,
     build_user_authorization_prompt,
     exchange_authorization_code,
     fetch_userinfo,
     generate_authorization_request,
     is_loopback_redirect_uri,
+    refresh_access_token,
     run_linkedin_oauth_browser_smoke_test,
     run_linkedin_oauth_smoke_test,
     wait_for_oauth_callback,
@@ -22,20 +25,20 @@ from app.linkedin.oauth import (
 from app.settings import LinkedInApiSettings, LinkedInOAuthSettings
 
 
-@dataclass
 class FakeResponse:
-    status_code: int
-    payload: object
-    text: str = ""
+    def __init__(self, status_code: int, payload: object, text: str = "") -> None:
+        self.status_code = status_code
+        self.payload = payload
+        self.text = text
 
     def json(self) -> object:
         return self.payload
 
 
-@dataclass
 class FakeSession:
-    post_response: FakeResponse
-    get_response: FakeResponse
+    def __init__(self, post_response: FakeResponse, get_response: FakeResponse) -> None:
+        self.post_response = post_response
+        self.get_response = get_response
 
     def post(
         self, url: str, *, data: dict[str, str], headers: dict[str, str], timeout: float
@@ -51,6 +54,18 @@ class FakeSession:
         self.get_headers = headers
         self.get_timeout = timeout
         return self.get_response
+
+
+class TimeoutSession(FakeSession):
+    def post(
+        self, url: str, *, data: dict[str, str], headers: dict[str, str], timeout: float
+    ) -> FakeResponse:
+        raise RequestsTimeout("timed out")
+
+
+class UserinfoTimeoutSession(FakeSession):
+    def get(self, url: str, *, headers: dict[str, str], timeout: float) -> FakeResponse:
+        raise RequestsTimeout("timed out")
 
 
 def make_oauth_settings() -> LinkedInOAuthSettings:
@@ -108,6 +123,70 @@ def test_exchange_authorization_code_raises_on_error() -> None:
         )
 
 
+def test_refresh_access_token_returns_refreshed_access_token() -> None:
+    session = FakeSession(
+        post_response=FakeResponse(
+            200,
+            {
+                "access_token": "token-456",
+                "refresh_token": "refresh-456",
+                "expires_in": 7200,
+            },
+        ),
+        get_response=FakeResponse(200, {}),
+    )
+
+    token = refresh_access_token(
+        make_oauth_settings(),
+        "refresh-123",
+        timeout_seconds=3.0,
+        session=session,
+    )
+
+    assert token.access_token == "token-456"
+    assert token.refresh_token == "refresh-456"
+    assert token.expires_in == 7200
+    assert session.post_data["grant_type"] == "refresh_token"
+    assert session.post_data["refresh_token"] == "refresh-123"
+
+
+def test_refresh_access_token_rejects_invalid_grant() -> None:
+    session = FakeSession(
+        post_response=FakeResponse(
+            400,
+            {"error": "invalid_grant", "error_description": "refresh expired"},
+            text="refresh expired",
+        ),
+        get_response=FakeResponse(200, {}),
+    )
+
+    with pytest.raises(
+        LinkedInOAuthRefreshRejectedError,
+        match="must be authorized again",
+    ):
+        refresh_access_token(
+            make_oauth_settings(),
+            "refresh-123",
+            timeout_seconds=3.0,
+            session=session,
+        )
+
+
+def test_refresh_access_token_maps_timeout_as_transient_failure() -> None:
+    with pytest.raises(LinkedInOAuthRefreshTransientError, match="timed out") as exc:
+        refresh_access_token(
+            make_oauth_settings(),
+            "refresh-123",
+            timeout_seconds=3.0,
+            session=TimeoutSession(
+                post_response=FakeResponse(200, {}),
+                get_response=FakeResponse(200, {}),
+            ),
+        )
+
+    assert exc.value.error_code == "timeout"
+
+
 def test_run_linkedin_oauth_smoke_test_returns_userinfo_summary() -> None:
     session = FakeSession(
         post_response=FakeResponse(200, {"access_token": "token-123"}),
@@ -152,6 +231,21 @@ def test_fetch_userinfo_raises_on_empty_token() -> None:
     with pytest.raises(LinkedInOAuthError, match="Access token"):
         fetch_userinfo(
             "",
+            userinfo_url="https://api.linkedin.com/v2/userinfo",
+            timeout_seconds=3.0,
+            session=session,
+        )
+
+
+def test_fetch_userinfo_maps_timeout_to_safe_oauth_error() -> None:
+    session = UserinfoTimeoutSession(
+        post_response=FakeResponse(200, {}),
+        get_response=FakeResponse(200, {}),
+    )
+
+    with pytest.raises(LinkedInOAuthError, match="userinfo request timed out"):
+        fetch_userinfo(
+            "token-123",
             userinfo_url="https://api.linkedin.com/v2/userinfo",
             timeout_seconds=3.0,
             session=session,

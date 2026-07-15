@@ -79,7 +79,9 @@ Repo-local skills that must be shared across environments live under ``.agents/s
 
 - Add type annotations to public functions and tool inputs/outputs.
 - Prefer explicit data models for structured inputs and outputs.
-- Keep each `@dataclass` in its own dedicated module/file instead of defining dataclasses inline inside unrelated tool, service, or test modules.
+- Prefer `@dataclass`-based models over ad-hoc dictionaries, anonymous objects, or loosely shaped helper classes whenever structured data crosses function, tool, service, or test boundaries.
+- Do not define `@dataclass` types inline inside files that primarily contain runtime logic such as tools, services, clients, or orchestration modules.
+- Keep each `@dataclass` in a dedicated model, domain, or support module so the file has a single responsibility and the dataclass can be reused without coupling it to unrelated logic.
 - Keep prompts readable and version-controlled; avoid assembling large prompts through scattered string concatenation.
 - Use async functions for network-bound operations when the underlying client supports them.
 - Inject clients and external services so unit tests can replace them with fakes.
@@ -93,7 +95,7 @@ Every behavior change must include proportionate verification:
 
 - Unit-test deterministic domain logic and tool validation without calling real models or external services.
 - Integration-test ADK wiring, tool selection boundaries, and service adapters with controlled fakes or test credentials.
-- Every user-facing feature change must also include evaluation coverage under `tests/eval/` when the behavior affects agent instructions, routing, tool use, or response quality.
+- Every user-facing feature change must also include evaluation coverage under `tests/eval/` when the behavior affects agent instructions, routing, tool use, response quality, or auth-flow outcomes presented to the user.
 - Add or update ADK evaluation cases for changes to instructions, routing, tool use, or response quality.
 - Cover success, invalid input, permission denial, rate limiting, timeout, and upstream failure where relevant.
 - Run the smallest relevant checks while iterating, then the full local test and lint suite before handoff.

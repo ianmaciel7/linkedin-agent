@@ -96,6 +96,30 @@ def test_local_encrypted_token_store_raises_on_expired_credential(tmp_path) -> N
         store.load(make_oauth_settings())
 
 
+def test_local_encrypted_token_store_inspect_marks_expired_credential(tmp_path) -> None:
+    store = LocalEncryptedLinkedInTokenStore(
+        LinkedInTokenStorageSettings(
+            path=str(tmp_path / "linkedin-token.enc"),
+            encryption_key=Fernet.generate_key().decode("utf-8"),
+        ),
+        clock=lambda: 200.0,
+    )
+    store.save(
+        make_oauth_settings(),
+        OAuth2Auth(
+            access_token="token-123",
+            refresh_token="refresh-123",
+            expires_at=100.0,
+        ),
+    )
+
+    record = store.inspect(make_oauth_settings())
+
+    assert record is not None
+    assert record.is_expired is True
+    assert record.credential.refresh_token == "refresh-123"
+
+
 def test_local_encrypted_token_store_ignores_other_oauth_context(tmp_path) -> None:
     store = LocalEncryptedLinkedInTokenStore(
         LinkedInTokenStorageSettings(

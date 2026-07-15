@@ -74,6 +74,24 @@ def test_from_env_accepts_complete_oauth_settings_without_access_token() -> None
     )
 
 
+def test_from_env_accepts_non_loopback_oauth_without_token_storage() -> None:
+    settings = LinkedInApiSettings.from_env(
+        {
+            "LINKEDIN_CLIENT_ID": "client-id",
+            "LINKEDIN_CLIENT_SECRET": "client-secret",
+            "LINKEDIN_REDIRECT_URI": "https://example.com/callback",
+        }
+    )
+
+    assert settings.access_token is None
+    assert settings.oauth == LinkedInOAuthSettings(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri="https://example.com/callback",
+    )
+    assert settings.token_storage is None
+
+
 def test_from_env_rejects_partial_oauth_settings() -> None:
     with pytest.raises(SettingsError, match="LINKEDIN_REDIRECT_URI"):
         LinkedInApiSettings.from_env(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import time
 import webbrowser
@@ -21,9 +22,13 @@ from google.adk.auth.auth_credential import (
 )
 from google.adk.auth.auth_handler import AuthHandler
 from google.adk.auth.auth_schemes import OpenIdConnectWithConfig
+from requests import RequestException
+from requests.exceptions import Timeout as RequestsTimeout
 
 from app.linkedin.client import JsonValue
 from app.settings import LinkedInApiSettings, LinkedInOAuthSettings
+
+logger = logging.getLogger(__name__)
 
 
 class OAuthResponse(Protocol):
@@ -66,6 +71,29 @@ class OAuthSession(Protocol):
 
 class LinkedInOAuthError(RuntimeError):
     """Raised when the manual LinkedIn OAuth smoke flow fails."""
+
+
+class LinkedInOAuthRefreshError(LinkedInOAuthError):
+    """Base error for LinkedIn OAuth refresh failures."""
+
+
+class LinkedInOAuthRefreshRejectedError(LinkedInOAuthRefreshError):
+    """Raised when LinkedIn rejects refresh and reauthorization is required."""
+
+
+class LinkedInOAuthRefreshTransientError(LinkedInOAuthRefreshError):
+    """Raised when refresh fails transiently and may succeed on a later retry."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        error_code: str,
+        status_code: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.error_code = error_code
+        self.status_code = status_code
 
 
 @dataclass(frozen=True, slots=True)
@@ -323,50 +351,162 @@ def exchange_authorization_code(
     if not code:
         raise LinkedInOAuthError("Authorization code must not be empty")
 
-    http = session or requests.Session()
-    response = http.post(
-        oauth.token_url,
-        data={
+    token = _exchange_linkedin_token(
+        oauth=oauth,
+        grant_payload={
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": oauth.redirect_uri,
-            "client_id": oauth.client_id,
-            "client_secret": oauth.client_secret,
         },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        timeout=timeout_seconds,
+        timeout_seconds=timeout_seconds,
+        session=session,
+        action_name="token exchange",
     )
+    if isinstance(token, LinkedInOAuthToken):
+        return token
+    raise AssertionError(
+        "authorization-code flow must not yield refresh-specific errors"
+    )
+
+
+def refresh_access_token(
+    oauth: LinkedInOAuthSettings,
+    refresh_token: str,
+    *,
+    timeout_seconds: float,
+    session: OAuthSession | None = None,
+) -> LinkedInOAuthToken:
+    """Refresh an expired LinkedIn access token with a stored refresh token."""
+
+    normalized_refresh_token = refresh_token.strip()
+    if not normalized_refresh_token:
+        raise LinkedInOAuthRefreshRejectedError(
+            "Stored LinkedIn credential does not include a usable refresh token"
+        )
+
+    logger.info(
+        "LinkedIn OAuth refresh attempt for credential key %s",
+        oauth.credential_key,
+    )
+    token = _exchange_linkedin_token(
+        oauth=oauth,
+        grant_payload={
+            "grant_type": "refresh_token",
+            "refresh_token": normalized_refresh_token,
+        },
+        timeout_seconds=timeout_seconds,
+        session=session,
+        action_name="refresh",
+    )
+    if isinstance(token, LinkedInOAuthToken):
+        logger.info(
+            "LinkedIn OAuth refresh succeeded for credential key %s",
+            oauth.credential_key,
+        )
+        return token
+    raise AssertionError("refresh flow must return a LinkedInOAuthToken")
+
+
+def _exchange_linkedin_token(
+    *,
+    oauth: LinkedInOAuthSettings,
+    grant_payload: dict[str, str],
+    timeout_seconds: float,
+    session: OAuthSession | None,
+    action_name: str,
+) -> LinkedInOAuthToken:
+    http = session or requests.Session()
+    try:
+        response = http.post(
+            oauth.token_url,
+            data={
+                **grant_payload,
+                "client_id": oauth.client_id,
+                "client_secret": oauth.client_secret,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=timeout_seconds,
+        )
+    except RequestsTimeout as exc:
+        raise LinkedInOAuthRefreshTransientError(
+            "LinkedIn OAuth token refresh timed out"
+            if action_name == "refresh"
+            else "LinkedIn token exchange timed out",
+            error_code="timeout",
+        ) from exc
+    except RequestException as exc:
+        raise LinkedInOAuthRefreshTransientError(
+            "LinkedIn OAuth token refresh failed before a response was received"
+            if action_name == "refresh"
+            else "LinkedIn token exchange failed before a response was received",
+            error_code="upstream_failure",
+        ) from exc
+
     payload = response.json()
     if not isinstance(payload, dict):
+        if action_name == "refresh":
+            raise LinkedInOAuthRefreshTransientError(
+                "LinkedIn OAuth token refresh returned an invalid response",
+                error_code="upstream_failure",
+                status_code=response.status_code,
+            )
         raise LinkedInOAuthError(
             f"LinkedIn token exchange returned non-JSON payload with status {response.status_code}"
         )
 
     access_token = payload.get("access_token")
-    if (
-        response.status_code != 200
-        or not isinstance(access_token, str)
-        or not access_token
-    ):
-        message = (
-            payload.get("error_description") or payload.get("error") or response.text
+    if response.status_code == 200 and isinstance(access_token, str) and access_token:
+        refresh_token = payload.get("refresh_token")
+        expires_in_value = payload.get("expires_in")
+        expires_in = _coerce_expires_in(expires_in_value)
+        expires_at = time.time() + expires_in if expires_in is not None else None
+
+        return LinkedInOAuthToken(
+            access_token=access_token,
+            refresh_token=refresh_token.strip() or None
+            if isinstance(refresh_token, str)
+            else None,
+            expires_at=expires_at,
+            expires_in=expires_in,
         )
+
+    message = payload.get("error_description") or payload.get("error") or response.text
+    if action_name != "refresh":
         raise LinkedInOAuthError(
             f"LinkedIn token exchange failed with status {response.status_code}: {message}"
         )
 
-    refresh_token = payload.get("refresh_token")
-    expires_in_value = payload.get("expires_in")
-    expires_in = _coerce_expires_in(expires_in_value)
-    expires_at = time.time() + expires_in if expires_in is not None else None
+    error = payload.get("error")
+    error_text = error.strip() if isinstance(error, str) else ""
+    if response.status_code in {400, 401} and error_text in {
+        "invalid_grant",
+        "invalid_request",
+        "unauthorized_client",
+    }:
+        logger.info(
+            "LinkedIn OAuth refresh rejected for credential key %s",
+            oauth.credential_key,
+        )
+        raise LinkedInOAuthRefreshRejectedError(
+            "Stored LinkedIn credential is no longer valid and must be authorized again"
+        )
 
-    return LinkedInOAuthToken(
-        access_token=access_token,
-        refresh_token=refresh_token.strip() or None
-        if isinstance(refresh_token, str)
-        else None,
-        expires_at=expires_at,
-        expires_in=expires_in,
+    if response.status_code == 429:
+        raise LinkedInOAuthRefreshTransientError(
+            "LinkedIn OAuth token refresh is rate limited",
+            error_code="rate_limited",
+            status_code=response.status_code,
+        )
+    if response.status_code == 408:
+        raise LinkedInOAuthRefreshTransientError(
+            "LinkedIn OAuth token refresh timed out",
+            error_code="timeout",
+            status_code=response.status_code,
+        )
+    raise LinkedInOAuthRefreshTransientError(
+        f"LinkedIn OAuth token refresh failed with status {response.status_code}",
+        error_code="upstream_failure",
+        status_code=response.status_code,
     )
 
 
@@ -384,11 +524,19 @@ def fetch_userinfo(
         raise LinkedInOAuthError("Access token must not be empty")
 
     http = session or requests.Session()
-    response = http.get(
-        userinfo_url,
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=timeout_seconds,
-    )
+    try:
+        response = http.get(
+            userinfo_url,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=timeout_seconds,
+        )
+    except RequestsTimeout as exc:
+        raise LinkedInOAuthError("LinkedIn userinfo request timed out") from exc
+    except RequestException as exc:
+        raise LinkedInOAuthError(
+            "LinkedIn userinfo request failed before a response was received"
+        ) from exc
+
     payload = response.json()
     return response.status_code, payload if isinstance(
         payload, (dict, list, str, int, float, bool)

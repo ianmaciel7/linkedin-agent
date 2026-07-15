@@ -77,8 +77,21 @@ class StoredLinkedInCredential:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class StoredLinkedInCredentialRecord:
+    """Stored credential plus lifecycle metadata derived at load time."""
+
+    credential: StoredLinkedInCredential
+    is_expired: bool
+
+
 class LinkedInTokenStore(Protocol):
     """Protocol for LinkedIn credential persistence implementations."""
+
+    def inspect(
+        self, oauth: LinkedInOAuthSettings
+    ) -> StoredLinkedInCredentialRecord | None:
+        """Load a stored credential and report whether it has expired."""
 
     def load(self, oauth: LinkedInOAuthSettings) -> StoredLinkedInCredential | None:
         """Load a stored credential for the current LinkedIn OAuth app context."""
@@ -109,7 +122,9 @@ class LocalEncryptedLinkedInTokenStore:
         self._path = Path(settings.path).expanduser()
         self._fernet = self._build_fernet(settings.encryption_key)
 
-    def load(self, oauth: LinkedInOAuthSettings) -> StoredLinkedInCredential | None:
+    def inspect(
+        self, oauth: LinkedInOAuthSettings
+    ) -> StoredLinkedInCredentialRecord | None:
         if not self._path.exists():
             logger.info(
                 "LinkedIn token store miss for credential key %s",
@@ -132,20 +147,33 @@ class LocalEncryptedLinkedInTokenStore:
             expires_at=credential_payload.get("expires_at"),
             expires_in=credential_payload.get("expires_in"),
         )
-        if credential.expires_at is not None and credential.expires_at <= self._clock():
+        is_expired = (
+            credential.expires_at is not None and credential.expires_at <= self._clock()
+        )
+        if is_expired:
             logger.info(
                 "LinkedIn token store expired credential for credential key %s",
                 oauth.credential_key,
-            )
-            raise LinkedInTokenStoreExpiredCredentialError(
-                "Stored LinkedIn credential has expired"
             )
 
         logger.info(
             "LinkedIn token store hit for credential key %s",
             oauth.credential_key,
         )
-        return credential
+        return StoredLinkedInCredentialRecord(
+            credential=credential,
+            is_expired=is_expired,
+        )
+
+    def load(self, oauth: LinkedInOAuthSettings) -> StoredLinkedInCredential | None:
+        record = self.inspect(oauth)
+        if record is None:
+            return None
+        if record.is_expired:
+            raise LinkedInTokenStoreExpiredCredentialError(
+                "Stored LinkedIn credential has expired"
+            )
+        return record.credential
 
     def save(
         self,

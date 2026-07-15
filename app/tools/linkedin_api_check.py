@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Protocol
-
-from google.adk.auth import AuthConfig
-from google.adk.auth.auth_credential import AuthCredential
 
 from app.linkedin.client import LinkedInApiClient, LinkedInApiTestResult
+from app.linkedin.credential_lifecycle import resolve_stored_credential
 from app.linkedin.oauth import (
     LinkedInOAuthError,
     build_auth_config,
@@ -17,51 +14,17 @@ from app.linkedin.oauth import (
 from app.linkedin.token_store import (
     LinkedInTokenStore,
     LinkedInTokenStoreConfigurationError,
-    LinkedInTokenStoreExpiredCredentialError,
-    LinkedInTokenStoreInvalidRecordError,
     LocalEncryptedLinkedInTokenStore,
+)
+from app.linkedin.tool_context_auth import (
+    LinkedInToolContext,
+    access_token_from_credential,
+    load_saved_credential,
+    save_credential,
 )
 from app.settings import LinkedInApiSettings, SettingsError
 
 logger = logging.getLogger(__name__)
-
-
-class LinkedInToolContext(Protocol):
-    """Subset of ADK tool context behavior required by the LinkedIn test tool."""
-
-    def request_credential(self, auth_config: AuthConfig) -> None:
-        """Request OAuth credentials for the given auth config."""
-
-    def get_auth_response(self, auth_config: AuthConfig) -> AuthCredential | None:
-        """Return a completed OAuth response when one is already available."""
-
-    async def load_credential(self, auth_config: AuthConfig) -> AuthCredential | None:
-        """Load a previously saved credential for the given auth config."""
-
-    async def save_credential(self, auth_config: AuthConfig) -> None:
-        """Persist the exchanged credential for the given auth config."""
-
-
-async def _load_saved_credential(
-    tool_context: LinkedInToolContext, auth_config: AuthConfig
-) -> AuthCredential | None:
-    try:
-        return await tool_context.load_credential(auth_config)
-    except ValueError:
-        return None
-
-
-async def _save_credential(
-    tool_context: LinkedInToolContext,
-    auth_config: AuthConfig,
-    credential: AuthCredential,
-) -> None:
-    try:
-        await tool_context.save_credential(
-            auth_config.model_copy(update={"exchanged_auth_credential": credential})
-        )
-    except ValueError:
-        return
 
 
 def _pending_authorization_result(settings: LinkedInApiSettings) -> dict[str, object]:
@@ -87,12 +50,6 @@ def _pending_authorization_result(settings: LinkedInApiSettings) -> dict[str, ob
     return result
 
 
-def _access_token_from_credential(credential: AuthCredential | None) -> str | None:
-    if credential is None or credential.oauth2 is None:
-        return None
-    return credential.oauth2.access_token
-
-
 def _token_store_from_settings(
     settings: LinkedInApiSettings,
     token_store: LinkedInTokenStore | None,
@@ -113,14 +70,13 @@ def _store_configuration_error_result(message: str) -> dict[str, object]:
 
 
 def _invalid_stored_credential_result(message: str) -> dict[str, object]:
-    return {
-        "ok": False,
-        "message": message,
-        "error_code": "invalid_stored_credential",
-        "status_code": None,
-        "account_summary": None,
-        "reauthorization_required": True,
-    }
+    result = LinkedInApiTestResult(
+        ok=False,
+        message=message,
+        error_code="invalid_stored_credential",
+    ).to_dict()
+    result["reauthorization_required"] = True
+    return result
 
 
 async def run_linkedin_api_test(
@@ -170,45 +126,41 @@ async def run_linkedin_api_test(
             error_code="missing_configuration",
         ).to_dict()
 
+    resolution = None
     if resolved_token_store is not None:
-        try:
-            stored_credential = resolved_token_store.load(resolved_settings.oauth)
-        except LinkedInTokenStoreConfigurationError as exc:
-            return _store_configuration_error_result(str(exc))
-        except LinkedInTokenStoreExpiredCredentialError:
-            resolved_token_store.clear(resolved_settings.oauth)
-            logger.info(
-                "LinkedIn stored credential expired for credential key %s",
-                resolved_settings.oauth.credential_key,
-            )
-            stored_credential = None
-        except LinkedInTokenStoreInvalidRecordError:
-            resolved_token_store.clear(resolved_settings.oauth)
-            logger.info(
-                "LinkedIn stored credential was invalid for credential key %s",
-                resolved_settings.oauth.credential_key,
-            )
-            stored_credential = None
-        else:
-            if stored_credential is not None:
-                result = resolved_client.test_connection(
-                    access_token=stored_credential.access_token
-                ).to_dict()
-                if result.get("ok") is True:
-                    result["credential_source"] = "secure_token_store"
-                    return result
-                if result.get("error_code") == "permission_denied":
-                    resolved_token_store.clear(resolved_settings.oauth)
-                    logger.info(
-                        "LinkedIn stored credential rejected for credential key %s",
-                        resolved_settings.oauth.credential_key,
-                    )
-                else:
-                    result["credential_source"] = "secure_token_store"
-                    return result
+        resolution = resolve_stored_credential(
+            resolved_settings,
+            resolved_token_store,
+        )
+        if resolution.error_result is not None:
+            return resolution.error_result.to_dict()
+        if resolution.credential is not None:
+            result = resolved_client.test_connection(
+                access_token=resolution.credential.access_token
+            ).to_dict()
+            if result.get("ok") is True:
+                result["credential_source"] = (
+                    resolution.credential_source or "secure_token_store"
+                )
+                return result
+            if result.get("error_code") == "permission_denied":
+                resolved_token_store.clear(resolved_settings.oauth)
+                logger.info(
+                    "LinkedIn stored credential rejected for credential key %s",
+                    resolved_settings.oauth.credential_key,
+                )
+            else:
+                result["credential_source"] = (
+                    resolution.credential_source or "secure_token_store"
+                )
+                return result
 
     if tool_context is None:
-        if resolved_token_store is not None:
+        if (
+            resolved_token_store is not None
+            and resolution is not None
+            and resolution.reauthorization_required
+        ):
             return _invalid_stored_credential_result(
                 "Stored LinkedIn credential is unavailable or no longer valid. "
                 "Reauthorize LinkedIn from an ADK tool session to continue."
@@ -223,7 +175,7 @@ async def run_linkedin_api_test(
         ).to_dict()
 
     auth_config = build_auth_config(resolved_settings.oauth)
-    credential = await _load_saved_credential(tool_context, auth_config)
+    credential = await load_saved_credential(tool_context, auth_config)
     if credential is None:
         credential = tool_context.get_auth_response(auth_config)
 
@@ -231,7 +183,7 @@ async def run_linkedin_api_test(
         tool_context.request_credential(auth_config)
         return _pending_authorization_result(resolved_settings)
 
-    access_token = _access_token_from_credential(credential)
+    access_token = access_token_from_credential(credential)
     if not access_token:
         return LinkedInApiTestResult(
             ok=False,
@@ -239,7 +191,7 @@ async def run_linkedin_api_test(
             error_code="missing_configuration",
         ).to_dict()
 
-    await _save_credential(tool_context, auth_config, credential)
+    await save_credential(tool_context, auth_config, credential)
     result = resolved_client.test_connection(access_token=access_token).to_dict()
     if (
         result.get("ok") is True

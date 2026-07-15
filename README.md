@@ -78,6 +78,12 @@ Generate a Fernet key locally with:
 
 The repository stores only the minimum credential fields needed for reuse, keeps raw tokens out of tool responses, and clears invalid or rejected stored credentials before reauthorization.
 
+When a stored LinkedIn access token expires, the local auth flow now behaves in three safe ways:
+
+- if LinkedIn issued a usable refresh token, the agent refreshes the access token through the official token endpoint and continues without another consent prompt
+- if no refresh token is available, the expired stored credential is cleared and the user is asked to authorize again
+- if the refresh attempt fails transiently because of timeout, rate limiting, or another upstream issue, the agent returns a safe retry-later error without exposing secret values or forcing immediate reauthorization
+
 ## Local Verification
 
 - `uv sync`
@@ -163,7 +169,7 @@ Release outcome: the agent can authenticate a user and validate read-only Linked
 - [x] OAuth 2.0 login, OpenID Connect, `/userinfo`, environment config, basic error handling, and tests
 - [x] OAuth callback and state validation
 - [x] Secure token storage
-- [ ] Token expiration handling
+- [x] Token expiration handling
 
 ### v0.2 Profile Data
 
@@ -312,6 +318,6 @@ This is a cross-cutting capability track, not a separate release. It should be i
 
 - [x] Implement OAuth callback and state validation
 - [x] Add secure persisted token handling
-- [ ] Add token expiration handling
+- [x] Add token expiration handling
 - [ ] Build and store the authenticated member URN
 - [ ] Add profile completeness analysis

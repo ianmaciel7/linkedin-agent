@@ -6,6 +6,7 @@ import math
 import os
 from dataclasses import dataclass
 from typing import Mapping
+from urllib.parse import urlparse
 
 
 class SettingsError(ValueError):
@@ -92,7 +93,12 @@ class LinkedInApiSettings:
                 "configure LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, and "
                 "LINKEDIN_REDIRECT_URI."
             )
-        if access_token is None and oauth is not None and token_storage is None:
+        if (
+            access_token is None
+            and oauth is not None
+            and token_storage is None
+            and cls._requires_local_token_storage(oauth)
+        ):
             raise SettingsError(
                 "Missing required environment variable: LINKEDIN_TOKEN_STORAGE_PATH"
             )
@@ -214,3 +220,8 @@ class LinkedInApiSettings:
             path=path,
             encryption_key=encryption_key,
         )
+
+    @staticmethod
+    def _requires_local_token_storage(oauth: LinkedInOAuthSettings) -> bool:
+        parsed = urlparse(oauth.redirect_uri)
+        return parsed.hostname in {"localhost", "127.0.0.1"}
