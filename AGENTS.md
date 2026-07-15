@@ -120,9 +120,15 @@ Every behavior change must include proportionate verification:
 - Integration-test ADK wiring, tool selection boundaries, and service adapters with controlled fakes or test credentials.
 - Every implemented user-facing feature MUST have at least one direct automated test and, when the feature affects instructions, routing, tool use, response quality, or visible auth behavior, at least one eval case under `tests/eval/`.
 - Add or update ADK evaluation cases for changes to instructions, routing, tool use, response quality, auth-flow outcomes, and read-only safety boundaries.
+- Follow the Google `agents-cli` eval pattern by keeping the scaffold-default dataset at `tests/eval/datasets/basic-dataset.json`.
+- Use realistic user prompts in eval cases, not implementation notes or internal test instructions.
 - Prefer one eval case per meaningful user-visible flow or failure mode rather than one broad prompt that tries to cover everything.
-- Keep the scaffold-default dataset path working. `agents-cli eval generate` should succeed with the repository's default files, so maintain `tests/eval/datasets/basic-dataset.json`.
+- Start with a small set of high-signal eval cases and expand coverage only after those cases pass consistently.
 - Use `agents-cli eval generate` and `agents-cli eval grade` as the standard local eval path once ADC and other required credentials are configured.
+- Inspect `artifacts/grade_results/` after grading and use `agents-cli eval compare <old> <new>` to validate improvements across iterations.
+- Use `agents-cli eval dataset synthesize` when you need official cold-start scenario generation instead of hand-authoring every initial case.
+- Use `agents-cli eval optimize` only when prompt optimization is explicitly requested or clearly justified, because it is costly and long-running.
+- Keep the default eval metrics aligned with the Google-recommended starting point for this repo's current behavior: `multi_turn_task_success`, `final_response_quality`, `multi_turn_tool_use_quality`, and `safety`.
 - Cover success, invalid input, permission denial, rate limiting, timeout, and upstream failure where relevant.
 - For every completed feature, include both happy-path coverage and the most important safety or failure-path coverage.
 - Do not mark a roadmap item complete in `README.md` until its code, tests, and eval coverage all exist and agree with the documented behavior.
