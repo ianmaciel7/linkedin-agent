@@ -10,10 +10,17 @@ requires-python = ">=3.11"
 dependencies = [
   "google-adk>=0.1.0",
   "hypothesis>=6.156.6",
+  "linkedin-api-client>=0.3.0",
   "pytest>=8.0.0",
   "pytest-cov>=7.1.0",
   "pytest-mock>=3.15.1",
   "pytest-xdist>=3.8.0",
+  "types-requests>=2.33.0.20260712",
+]
+
+[dependency-groups]
+dev = [
+  "ruff>=0.9.0",
 ]
 
 [tool.setuptools]
@@ -21,6 +28,13 @@ packages = ["app", "app.linkedin", "app.tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-m 'not live'"
+markers = [
+  "live: live integration tests that require external credentials and network access",
+]
+filterwarnings = [
+  "ignore:BaseAgentConfig is deprecated and will be removed in future versions\\. Config is now loaded via reflection so the separate config class is no longer needed\\.:DeprecationWarning",
+]
 
 [tool.pyrefly]
 python-interpreter-path = ".venv/bin/python"
@@ -28,5 +42,3 @@ project-excludes = [
     "**/pyrefly_virtual/**",
     "**/__pyrefly_virtual__/**",
 ]
-
-

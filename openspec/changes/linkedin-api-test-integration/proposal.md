@@ -11,15 +11,16 @@ Add a simple, non-mutating LinkedIn API test helper that:
 - Confirms the configured access token can reach the LinkedIn test endpoint.
 - Returns structured success or failure information.
 - Is covered by automated tests so the integration remains stable.
-- Uses LinkedIn's official Python API client where it simplifies request construction.
+- Uses `linkedin-api-client` as the LinkedIn client library for the test path.
 
 ## Scope
 This change will cover:
 
 - A small LinkedIn API test service/helper outside the ADK layer.
+- Wiring the read-only LinkedIn API test helper into the ADK root agent as a callable tool.
 - A controlled integration test that validates the helper behavior with a fake or stubbed HTTP client.
 - Documentation updates for required environment variables and local verification steps.
-- If the official client is used, a pinned dependency entry for it in `pyproject.toml`.
+- A pinned dependency entry for `linkedin-api-client` in `pyproject.toml`.
 
 ## Non-goals
 This change will not:
@@ -27,7 +28,6 @@ This change will not:
 - Publish posts, send messages, send invitations, or modify profile data.
 - Add scraping, bulk outreach, evasion, or other policy-sensitive automation.
 - Implement full OAuth flows, token refresh, or a broader LinkedIn client abstraction unless required for the test path.
-- Wire the test into `root_agent` or add other ADK behavior.
 - Introduce production deployment changes.
 - Build a full-purpose LinkedIn SDK wrapper beyond what the test helper needs.
 

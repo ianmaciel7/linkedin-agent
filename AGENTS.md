@@ -46,9 +46,12 @@ uv run pytest
 uv run ruff check .
 uv run ruff format --check .
 openspec validate --all
+uv run python -c "from app.settings import LinkedInApiSettings; from app.linkedin.oauth import run_linkedin_oauth_smoke_test; import os; settings = LinkedInApiSettings.from_env(); print(run_linkedin_oauth_smoke_test(settings, os.environ['LINKEDIN_AUTH_CODE']).to_dict())"
 ```
 
 Use the commands actually defined by the repository if they later differ. Do not hand-edit `uv.lock`; regenerate it with `uv` when dependencies change. Do not deploy or run cloud-changing commands unless the user explicitly requests it.
+
+Workspace MCP configuration lives in [`.vscode/mcp.json`](/home/ianma/workspace/linkedin-agent/.vscode/mcp.json) and currently registers the `microsoftLearn` HTTP server at `https://learn.microsoft.com/api/mcp`.
 
 Repo-local skills that must be shared across environments live under ``.agents/skills/``. When the repository adds versioned skill sources, use ``./.agents/skills/skill.sh list`` to inspect the lock file and ``./.agents/skills/skill.sh sync`` to materialize the pinned skills into the workspace copy.
 
@@ -102,6 +105,7 @@ Every behavior change must include proportionate verification:
 - Read configuration from environment variables through one validated settings layer.
 - Fail early with a useful error when required configuration is missing.
 - Pin and lock dependencies. Prefer official Google ADK and provider SDKs over custom protocol implementations.
+- Keep type-checker support dependencies such as `types-requests` in sync with runtime imports when static analysis covers third-party libraries without bundled stubs.
 - When adding a variable, update the settings model, `.env.example`, tests, and README documentation together.
 
 ## Change workflow

@@ -1,0 +1,15 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "linkedin-connectivity-check",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Please verify whether my LinkedIn API credentials are configured correctly."
+          }
+        ]
+      }
+    }
+  ]
+}

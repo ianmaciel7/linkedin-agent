@@ -1,0 +1,245 @@
+from __future__ import annotations
+
+import socket
+from dataclasses import dataclass
+from threading import Thread
+from urllib.parse import parse_qs, urlparse
+
+import pytest
+import requests
+
+from app.linkedin.oauth import (
+    LinkedInOAuthError,
+    exchange_authorization_code,
+    fetch_userinfo,
+    generate_authorization_request,
+    run_linkedin_oauth_browser_smoke_test,
+    run_linkedin_oauth_smoke_test,
+    wait_for_oauth_callback,
+)
+from app.settings import LinkedInApiSettings, LinkedInOAuthSettings
+
+
+@dataclass
+class FakeResponse:
+    status_code: int
+    payload: object
+    text: str = ""
+
+    def json(self) -> object:
+        return self.payload
+
+
+@dataclass
+class FakeSession:
+    post_response: FakeResponse
+    get_response: FakeResponse
+
+    def post(
+        self, url: str, *, data: dict[str, str], headers: dict[str, str], timeout: float
+    ) -> FakeResponse:
+        self.post_url = url
+        self.post_data = data
+        self.post_headers = headers
+        self.post_timeout = timeout
+        return self.post_response
+
+    def get(self, url: str, *, headers: dict[str, str], timeout: float) -> FakeResponse:
+        self.get_url = url
+        self.get_headers = headers
+        self.get_timeout = timeout
+        return self.get_response
+
+
+def make_oauth_settings() -> LinkedInOAuthSettings:
+    return LinkedInOAuthSettings(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri="http://localhost:8000/callback",
+    )
+
+
+def test_exchange_authorization_code_returns_access_token() -> None:
+    session = FakeSession(
+        post_response=FakeResponse(200, {"access_token": "token-123"}),
+        get_response=FakeResponse(200, {}),
+    )
+
+    access_token = exchange_authorization_code(
+        make_oauth_settings(),
+        "code-123",
+        timeout_seconds=3.0,
+        session=session,
+    )
+
+    assert access_token == "token-123"
+    assert session.post_data["grant_type"] == "authorization_code"
+    assert session.post_data["code"] == "code-123"
+
+
+def test_exchange_authorization_code_raises_on_error() -> None:
+    session = FakeSession(
+        post_response=FakeResponse(
+            400,
+            {"error": "invalid_request", "error_description": "bad code"},
+            text="bad code",
+        ),
+        get_response=FakeResponse(200, {}),
+    )
+
+    with pytest.raises(LinkedInOAuthError, match="bad code"):
+        exchange_authorization_code(
+            make_oauth_settings(),
+            "code-123",
+            timeout_seconds=3.0,
+            session=session,
+        )
+
+
+def test_run_linkedin_oauth_smoke_test_returns_userinfo_summary() -> None:
+    session = FakeSession(
+        post_response=FakeResponse(200, {"access_token": "token-123"}),
+        get_response=FakeResponse(
+            200,
+            {
+                "sub": "user-123",
+                "name": "Jane Example",
+                "email": "jane@example.com",
+            },
+        ),
+    )
+    settings = LinkedInApiSettings(
+        access_token=None,
+        test_url="https://api.linkedin.com/v2/userinfo",
+        timeout_seconds=3.0,
+        oauth=make_oauth_settings(),
+    )
+
+    result = run_linkedin_oauth_smoke_test(
+        settings,
+        "code-123",
+        session=session,
+    )
+
+    assert result.ok is True
+    assert result.access_token == "token-123"
+    assert result.userinfo == {
+        "sub": "user-123",
+        "name": "Jane Example",
+        "email": "jane@example.com",
+    }
+
+
+def test_fetch_userinfo_raises_on_empty_token() -> None:
+    session = FakeSession(
+        post_response=FakeResponse(200, {}),
+        get_response=FakeResponse(200, {}),
+    )
+
+    with pytest.raises(LinkedInOAuthError, match="Access token"):
+        fetch_userinfo(
+            "",
+            userinfo_url="https://api.linkedin.com/v2/userinfo",
+            timeout_seconds=3.0,
+            session=session,
+        )
+
+
+def test_generate_authorization_request_returns_url_and_state() -> None:
+    result = generate_authorization_request(make_oauth_settings())
+
+    parsed = urlparse(result.authorization_uri)
+    params = parse_qs(parsed.query)
+
+    assert parsed.netloc == "www.linkedin.com"
+    assert params["response_type"] == ["code"]
+    assert result.state
+
+
+def test_wait_for_oauth_callback_receives_code() -> None:
+    port = _find_free_port()
+    oauth = LinkedInOAuthSettings(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri=f"http://localhost:{port}/callback",
+        callback_timeout_seconds=3.0,
+    )
+    authorization_request = generate_authorization_request(oauth)
+
+    def opener(_: str) -> bool:
+        def send_callback() -> None:
+            requests.get(
+                f"http://localhost:{port}/callback",
+                params={
+                    "code": "code-123",
+                    "state": authorization_request.state or "",
+                },
+                timeout=3.0,
+            )
+
+        thread = Thread(target=send_callback, daemon=True)
+        thread.start()
+        return True
+
+    callback = wait_for_oauth_callback(
+        oauth,
+        authorization_request.authorization_uri,
+        opener=opener,
+    )
+
+    assert callback.authorization_code == "code-123"
+    assert callback.state == authorization_request.state
+
+
+def test_run_linkedin_oauth_browser_smoke_test_completes_round_trip() -> None:
+    port = _find_free_port()
+    oauth = LinkedInOAuthSettings(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri=f"http://localhost:{port}/callback",
+        callback_timeout_seconds=3.0,
+    )
+    settings = LinkedInApiSettings(
+        access_token=None,
+        timeout_seconds=3.0,
+        oauth=oauth,
+    )
+    session = FakeSession(
+        post_response=FakeResponse(200, {"access_token": "token-123"}),
+        get_response=FakeResponse(
+            200,
+            {"sub": "user-123", "name": "Jane Example"},
+        ),
+    )
+
+    def opener(url: str) -> bool:
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+        expected_state = params["state"][0]
+
+        def send_callback() -> None:
+            requests.get(
+                oauth.redirect_uri,
+                params={"code": "code-123", "state": expected_state},
+                timeout=3.0,
+            )
+
+        thread = Thread(target=send_callback, daemon=True)
+        thread.start()
+        return bool(url)
+
+    result = run_linkedin_oauth_browser_smoke_test(
+        settings,
+        session=session,
+        opener=opener,
+    )
+
+    assert result.ok is True
+    assert result.access_token == "token-123"
+    assert result.userinfo == {"sub": "user-123", "name": "Jane Example"}
+
+
+def _find_free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("localhost", 0))
+        return int(sock.getsockname()[1])
