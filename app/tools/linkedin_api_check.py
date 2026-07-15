@@ -8,7 +8,11 @@ from google.adk.auth import AuthConfig
 from google.adk.auth.auth_credential import AuthCredential
 
 from app.linkedin.client import LinkedInApiClient, LinkedInApiTestResult
-from app.linkedin.oauth import build_auth_config
+from app.linkedin.oauth import (
+    LinkedInOAuthError,
+    build_auth_config,
+    build_user_authorization_prompt,
+)
 from app.settings import LinkedInApiSettings, SettingsError
 
 
@@ -48,6 +52,29 @@ async def _save_credential(
         )
     except ValueError:
         return
+
+
+def _pending_authorization_result(settings: LinkedInApiSettings) -> dict[str, object]:
+    result = LinkedInApiTestResult(
+        ok=False,
+        message="Awaiting LinkedIn authorization",
+        error_code="missing_configuration",
+    ).to_dict()
+    result["pending_auth"] = True
+
+    oauth_settings = settings.oauth
+    if oauth_settings is None:
+        return result
+
+    try:
+        prompt = build_user_authorization_prompt(oauth_settings)
+    except LinkedInOAuthError:
+        return result
+
+    result["authorization_url"] = prompt.authorization_url
+    result["authorization_message"] = prompt.prompt_message
+    result["next_step"] = prompt.next_step
+    return result
 
 
 def _access_token_from_credential(credential: AuthCredential | None) -> str | None:
@@ -102,13 +129,7 @@ async def run_linkedin_api_test(
 
     if credential is None:
         tool_context.request_credential(auth_config)
-        result = LinkedInApiTestResult(
-            ok=False,
-            message="Awaiting LinkedIn authorization",
-            error_code="missing_configuration",
-        ).to_dict()
-        result["pending_auth"] = True
-        return result
+        return _pending_authorization_result(resolved_settings)
 
     access_token = _access_token_from_credential(credential)
     if not access_token:

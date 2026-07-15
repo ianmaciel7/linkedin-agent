@@ -1,12 +1,12 @@
 {
   "eval_cases": [
     {
-      "eval_case_id": "linkedin-connectivity-check",
+      "eval_case_id": "linkedin-login-service",
       "prompt": {
         "role": "user",
         "parts": [
           {
-            "text": "Please verify whether my LinkedIn API credentials are configured correctly."
+            "text": "Please sign me in to LinkedIn and verify that my OAuth configuration is working."
           }
         ]
       }

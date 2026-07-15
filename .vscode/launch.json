@@ -2,20 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "ADK: Run Agent (Interactive)",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "google.adk.cli",
-      "args": [
-        "run",
-        "--verbose"
-      ],
-      "python": "${workspaceFolder}/.venv/bin/python",
-      "console": "integratedTerminal",
-      "justMyCode": true
-    },
-    {
-      "name": "ADK: Start Web Playground",
+      "name": "ADK: Start Web Playground (.env.local)",
       "type": "debugpy",
       "request": "launch",
       "module": "google.adk.cli",
@@ -25,19 +12,78 @@
       ],
       "python": "${workspaceFolder}/.venv/bin/python",
       "console": "integratedTerminal",
-      "justMyCode": true
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env.local"
     },
     {
-      "name": "Python: Debug Pytest Tests",
+      "name": "ADK: Start Web Playground (.env.prod)",
       "type": "debugpy",
       "request": "launch",
-      "module": "pytest",
+      "module": "google.adk.cli",
       "args": [
-        "${workspaceFolder}/tests"
+        "web",
+        "--reload_agents"
       ],
       "python": "${workspaceFolder}/.venv/bin/python",
       "console": "integratedTerminal",
-      "justMyCode": true
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env.prod"
+    },
+    {
+      "name": "ADK: Start Web Playground (.env.test)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "google.adk.cli",
+      "args": [
+        "web",
+        "--reload_agents"
+      ],
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env.test"
+    },
+    {
+      "name": "ADK: Start Web Playground (.env.local.paid)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "google.adk.cli",
+      "args": [
+        "web",
+        "--reload_agents"
+      ],
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env.local.paid"
+    },
+    {
+      "name": "ADK: Start Web Playground (.env.prod.paid)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "google.adk.cli",
+      "args": [
+        "web",
+        "--reload_agents"
+      ],
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env.prod.paid"
+    },
+    {
+      "name": "ADK: Start Web Playground (.env.test.paid)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "google.adk.cli",
+      "args": [
+        "web",
+        "--reload_agents"
+      ],
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env.test.paid"
     }
   ]
 }

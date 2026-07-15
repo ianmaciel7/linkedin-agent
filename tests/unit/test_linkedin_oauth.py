@@ -10,9 +10,11 @@ import requests
 
 from app.linkedin.oauth import (
     LinkedInOAuthError,
+    build_user_authorization_prompt,
     exchange_authorization_code,
     fetch_userinfo,
     generate_authorization_request,
+    is_loopback_redirect_uri,
     run_linkedin_oauth_browser_smoke_test,
     run_linkedin_oauth_smoke_test,
     wait_for_oauth_callback,
@@ -154,6 +156,20 @@ def test_generate_authorization_request_returns_url_and_state() -> None:
     assert parsed.netloc == "www.linkedin.com"
     assert params["response_type"] == ["code"]
     assert result.state
+
+
+def test_build_user_authorization_prompt_returns_safe_guidance() -> None:
+    result = build_user_authorization_prompt(make_oauth_settings())
+
+    assert result.authorization_url.startswith("https://www.linkedin.com/")
+    assert "LinkedIn" in result.prompt_message
+    assert "volte para esta conversa" in result.next_step
+
+
+def test_is_loopback_redirect_uri_matches_local_hosts() -> None:
+    assert is_loopback_redirect_uri("http://localhost:8000/callback") is True
+    assert is_loopback_redirect_uri("http://127.0.0.1:8000/dev-ui/") is True
+    assert is_loopback_redirect_uri("https://example.com/callback") is False
 
 
 def test_wait_for_oauth_callback_receives_code() -> None:

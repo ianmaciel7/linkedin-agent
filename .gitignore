@@ -222,6 +222,7 @@ __marimo__/
 # AI agent directories
 .claude/
 .codex/
+app/.adk/
 
 
 .env.*

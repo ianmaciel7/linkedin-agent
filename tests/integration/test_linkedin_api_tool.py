@@ -21,12 +21,13 @@ from app.linkedin.client import (
 )
 from app.linkedin.oauth import (
     LinkedInOAuthError,
+    LinkedInOAuthSmokeResult,
     build_auth_config,
     run_linkedin_oauth_browser_smoke_test,
     run_linkedin_oauth_smoke_test,
 )
 from app.settings import LinkedInApiSettings, LinkedInOAuthSettings
-from app.tools import run_linkedin_api_test
+from app.tools.linkedin_login_service import _run_linkedin_login_service
 
 
 @dataclass
@@ -50,7 +51,11 @@ class FakeTransport:
         self.access_token = access_token
         return FakeResponse(
             _status_code=200,
-            _entity={"sub": "user-456", "name": "Avery Example"},
+            _entity={
+                "sub": "user-456",
+                "name": "Avery Example",
+                "email": "avery@example.com",
+            },
         )
 
 
@@ -77,6 +82,28 @@ class DeniedTransport:
 
 
 @dataclass
+class UpstreamFailureResponse:
+    _status_code: int = 500
+    _entity: JsonValue = ""
+
+    @property
+    def status_code(self) -> int:
+        return self._status_code
+
+    @property
+    def entity(self) -> JsonValue:
+        return self._entity
+
+
+@dataclass
+class UpstreamFailureTransport:
+    def get(self, resource_path: str, access_token: str) -> LinkedInApiResponse:
+        self.resource_path = resource_path
+        self.access_token = access_token
+        return UpstreamFailureResponse()
+
+
+@dataclass
 class FakeToolContext:
     saved_credential: AuthCredential | None = None
     auth_response: AuthCredential | None = None
@@ -98,7 +125,21 @@ class FakeToolContext:
         self.saved_auth_config = auth_config
 
 
-def test_run_linkedin_api_test_with_fake_transport() -> None:
+def fake_browser_login_runner(settings: LinkedInApiSettings) -> LinkedInOAuthSmokeResult:
+    assert settings.oauth is not None
+    return LinkedInOAuthSmokeResult(
+        ok=True,
+        message="LinkedIn OAuth smoke test succeeded",
+        userinfo={
+            "sub": "user-789",
+            "name": "Jordan Example",
+            "email": "jordan@example.com",
+        },
+        status_code=200,
+    )
+
+
+def test_run_linkedin_login_service_with_fake_transport() -> None:
     transport = FakeTransport()
     settings = LinkedInApiSettings(
         access_token="token-123",
@@ -107,7 +148,7 @@ def test_run_linkedin_api_test_with_fake_transport() -> None:
     )
     client = LinkedInApiClient(settings, transport=transport)
 
-    result = asyncio.run(run_linkedin_api_test(settings=settings, client=client))
+    result = asyncio.run(_run_linkedin_login_service(settings=settings, client=client))
 
     assert (
         result
@@ -125,7 +166,9 @@ def test_run_linkedin_api_test_with_fake_transport() -> None:
     assert transport.access_token == "token-123"
 
 
-def test_run_linkedin_api_test_requests_oauth_when_no_credential_is_available() -> None:
+def test_run_linkedin_login_service_requests_oauth_when_no_credential_is_available() -> (
+    None
+):
     transport = FakeTransport()
     settings = LinkedInApiSettings(
         access_token=None,
@@ -139,19 +182,24 @@ def test_run_linkedin_api_test_requests_oauth_when_no_credential_is_available() 
     tool_context = FakeToolContext()
 
     result = asyncio.run(
-        run_linkedin_api_test(
+        _run_linkedin_login_service(
             tool_context=tool_context,
             settings=settings,
             client=client,
+            browser_login_runner=fake_browser_login_runner,
         )
     )
 
-    assert result["ok"] is False
-    assert result["pending_auth"] is True
-    assert tool_context.requested_auth_config is not None
+    assert result["ok"] is True
+    assert result["status_code"] == 200
+    assert result["account_summary"] == {
+        "sub": "user-789",
+        "name": "Jordan Example",
+    }
+    assert tool_context.requested_auth_config is None
 
 
-def test_run_linkedin_api_test_reuses_saved_oauth_credential() -> None:
+def test_run_linkedin_login_service_reuses_saved_oauth_credential() -> None:
     transport = FakeTransport()
     settings = LinkedInApiSettings(
         access_token=None,
@@ -171,19 +219,23 @@ def test_run_linkedin_api_test_reuses_saved_oauth_credential() -> None:
     )
 
     result = asyncio.run(
-        run_linkedin_api_test(
+        _run_linkedin_login_service(
             tool_context=tool_context,
             settings=settings,
             client=client,
+            browser_login_runner=fake_browser_login_runner,
         )
     )
 
     assert result["ok"] is True
-    assert transport.access_token == "oauth-token-123"
-    assert tool_context.saved_auth_config is not None
+    assert result["account_summary"] == {
+        "sub": "user-789",
+        "name": "Jordan Example",
+    }
+    assert tool_context.saved_auth_config is None
 
 
-def test_run_linkedin_api_test_maps_permission_denied_after_oauth_auth() -> None:
+def test_run_linkedin_login_service_maps_permission_denied_after_oauth_auth() -> None:
     settings = LinkedInApiSettings(
         access_token=None,
         oauth=LinkedInOAuthSettings(
@@ -201,7 +253,73 @@ def test_run_linkedin_api_test_maps_permission_denied_after_oauth_auth() -> None
     )
 
     result = asyncio.run(
-        run_linkedin_api_test(
+        _run_linkedin_login_service(
+            tool_context=tool_context,
+            settings=settings,
+            client=client,
+            browser_login_runner=lambda _settings: LinkedInOAuthSmokeResult(
+                ok=False,
+                message="permission denied",
+                status_code=403,
+                userinfo=None,
+            ),
+        )
+    )
+
+    assert result["ok"] is False
+    assert result["status_code"] == 403
+
+
+def test_run_linkedin_login_service_maps_upstream_failure_after_oauth_auth() -> None:
+    settings = LinkedInApiSettings(
+        access_token=None,
+        oauth=LinkedInOAuthSettings(
+            client_id="client-id",
+            client_secret="client-secret",
+            redirect_uri="http://localhost:8000/callback",
+        ),
+    )
+    client = LinkedInApiClient(settings, transport=UpstreamFailureTransport())
+    tool_context = FakeToolContext(
+        auth_response=AuthCredential(
+            auth_type=AuthCredentialTypes.OPEN_ID_CONNECT,
+            oauth2=OAuth2Auth(access_token="oauth-token-123"),
+        )
+    )
+
+    result = asyncio.run(
+        _run_linkedin_login_service(
+            tool_context=tool_context,
+            settings=settings,
+            client=client,
+            browser_login_runner=lambda _settings: LinkedInOAuthSmokeResult(
+                ok=False,
+                message="upstream failure",
+                status_code=500,
+                userinfo=None,
+            ),
+        )
+    )
+
+    assert result["ok"] is False
+    assert result["status_code"] == 500
+
+
+def test_run_linkedin_login_service_falls_back_to_adk_for_non_loopback_redirect() -> None:
+    transport = FakeTransport()
+    settings = LinkedInApiSettings(
+        access_token=None,
+        oauth=LinkedInOAuthSettings(
+            client_id="client-id",
+            client_secret="client-secret",
+            redirect_uri="https://example.com/callback",
+        ),
+    )
+    client = LinkedInApiClient(settings, transport=transport)
+    tool_context = FakeToolContext()
+
+    result = asyncio.run(
+        _run_linkedin_login_service(
             tool_context=tool_context,
             settings=settings,
             client=client,
@@ -209,11 +327,12 @@ def test_run_linkedin_api_test_maps_permission_denied_after_oauth_auth() -> None
     )
 
     assert result["ok"] is False
-    assert result["error_code"] == "permission_denied"
+    assert result["pending_auth"] is True
+    assert tool_context.requested_auth_config is not None
 
 
 @pytest.mark.live
-def test_run_linkedin_api_test_against_live_endpoint() -> None:
+def test_run_linkedin_login_service_against_live_endpoint() -> None:
     try:
         settings = LinkedInApiSettings.from_env()
     except ValueError as exc:
@@ -223,7 +342,7 @@ def test_run_linkedin_api_test_against_live_endpoint() -> None:
         pytest.skip("LINKEDIN_ACCESS_TOKEN is required for the current live test path")
 
     client = LinkedInApiClient(settings)
-    result = asyncio.run(run_linkedin_api_test(settings=settings, client=client))
+    result = asyncio.run(_run_linkedin_login_service(settings=settings, client=client))
 
     assert result["ok"] is True
     assert result["message"] == "LinkedIn API test succeeded"

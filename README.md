@@ -19,13 +19,13 @@ An ADK-based assistant for LinkedIn workflow automation and growth support.
 
 - `app/` will contain the Google ADK app entry points and agent logic.
 - `app/linkedin/` contains read-only LinkedIn API helpers that can be tested without ADK wiring.
-- `app/tools/` contains the callable helper used to run the LinkedIn API connectivity check.
+- `app/tools/` contains the callable helper used to run the LinkedIn login service.
 - `openspec/` contains the spec-driven workflow for proposals, specs, and task planning.
 - `AGENTS.md` documents the operating standard for contributors and agents.
 
-## LinkedIn API test
+## LinkedIn login service
 
-The scaffold now includes a small, non-mutating LinkedIn API test helper backed by `linkedin-api-client`. It is intended to confirm that credentials and endpoint configuration are valid before building broader LinkedIn workflows, and it is registered on the ADK root agent as a read-only tool.
+The scaffold now includes a small, non-mutating LinkedIn login service backed by `linkedin-api-client` and ADK OAuth helpers. It is intended to confirm that the user can sign in and that the OAuth configuration is valid before building broader LinkedIn workflows, and it is registered on the ADK root agent as a read-only tool.
 
 Required environment variables for the test path:
 
@@ -41,7 +41,7 @@ Required environment variables for the test path:
 Local verification steps:
 
 - `uv run pytest`
-- `uv run python -c "import asyncio; from app.tools import run_linkedin_api_test; print(asyncio.run(run_linkedin_api_test()))"`
+- `uv run python -c "import asyncio; from app.tools import run_linkedin_login_service; print(asyncio.run(run_linkedin_login_service()))"`
 - `uv run python -c "from app.agent import root_agent; print([tool.__name__ for tool in root_agent.tools])"`
 
 Optional live integration test:
@@ -58,6 +58,7 @@ Optional OAuth smoke tests:
 - Run `uv run pytest -m live tests/integration/test_linkedin_api_tool.py -q -rs` with `LINKEDIN_REDIRECT_URI=http://localhost:<porta>/callback` to trigger the automatic browser round-trip. This opens the LinkedIn consent page, waits for the localhost callback, exchanges the code, and calls `/userinfo`.
 
 The test flow returns structured success or failure output and does not create or modify LinkedIn data. Registering it on the ADK agent does not enable posting, messaging, invitations, profile edits, or any other mutating LinkedIn behavior. When the tool runs inside ADK with a `ToolContext`, it prefers ADK-managed OAuth and can request LinkedIn authorization instead of requiring a pasted access token.
+When authorization is still pending, the tool also returns a safe `authorization_url` plus short guidance so the agent can show a clickable sign-in link instead of only relying on the default credential prompt UI.
 
 ## Development notes
 

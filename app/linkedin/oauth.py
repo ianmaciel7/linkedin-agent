@@ -98,6 +98,15 @@ class LinkedInOAuthBrowserFlowResult:
 
 
 @dataclass(frozen=True, slots=True)
+class LinkedInAuthorizationPrompt:
+    """Safe metadata the agent can use to guide a user through consent."""
+
+    authorization_url: str
+    prompt_message: str
+    next_step: str
+
+
+@dataclass(frozen=True, slots=True)
 class _OAuthCallbackPayload:
     code: str | None = None
     state: str | None = None
@@ -151,6 +160,32 @@ def generate_authorization_request(
         authorization_code="",
         state=oauth2.state,
     )
+
+
+def build_user_authorization_prompt(
+    oauth: LinkedInOAuthSettings,
+) -> LinkedInAuthorizationPrompt:
+    """Return safe, user-facing guidance for the LinkedIn consent step."""
+
+    authorization_request = generate_authorization_request(oauth)
+    return LinkedInAuthorizationPrompt(
+        authorization_url=authorization_request.authorization_uri,
+        prompt_message=(
+            "Abra o link do LinkedIn para autorizar o login e concluir a "
+            "verificacao OAuth."
+        ),
+        next_step=(
+            "Depois de aprovar o acesso no LinkedIn, volte para esta conversa. "
+            "Se a interface nao continuar sozinha, peca para tentar novamente."
+        ),
+    )
+
+
+def is_loopback_redirect_uri(redirect_uri: str) -> bool:
+    """Return whether the redirect URI points to a local loopback address."""
+
+    parsed = urlparse(redirect_uri)
+    return parsed.hostname in {"localhost", "127.0.0.1"}
 
 
 def wait_for_oauth_callback(

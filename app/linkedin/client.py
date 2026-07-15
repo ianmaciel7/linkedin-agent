@@ -69,7 +69,7 @@ class LinkedInApiClientError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class LinkedInApiTestResult:
-    """Structured result for the LinkedIn API test helper."""
+    """Structured result for the LinkedIn read-only verification helper."""
 
     ok: bool
     message: str

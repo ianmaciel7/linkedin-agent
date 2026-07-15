@@ -1,4 +1,4 @@
-"""Validated runtime settings for the LinkedIn API test helper."""
+"""Validated runtime settings for the LinkedIn login and API helpers."""
 
 from __future__ import annotations
 
