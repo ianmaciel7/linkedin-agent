@@ -24,6 +24,12 @@ dev = [
   "ruff>=0.9.0",
 ]
 
+[project.optional-dependencies]
+eval = [
+  "google-adk[eval]>=2.0.0,<3.0.0",
+  "google-cloud-aiplatform[evaluation]>=1.156.0",
+]
+
 [tool.setuptools]
 packages = ["app", "app.linkedin", "app.tools"]
 

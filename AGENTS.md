@@ -62,6 +62,29 @@ Workspace MCP configuration lives in [`.vscode/mcp.json`](/home/ianma/workspace/
 
 Repo-local skills that must be shared across environments live under ``.agents/skills/``. When the repository adds versioned skill sources, use ``./.agents/skills/skill.sh list`` to inspect the lock file and ``./.agents/skills/skill.sh sync`` to materialize the pinned skills into the workspace copy.
 
+## Skill usage guide
+
+Use the checked-in repo skills intentionally. Read the selected `SKILL.md` before acting.
+
+- `openspec-propose`: use when a request introduces a new capability, a breaking behavior change, or a multi-file change that needs a new spec proposal.
+- `openspec-apply-change`: use when implementation work should follow an existing OpenSpec change and its task list.
+- `openspec-update-change`: use when an existing change's proposal, design, specs, or tasks must be revised to match new decisions.
+- `openspec-sync-specs`: use when delta specs from an implemented or clarified change need to be merged into `openspec/specs/` without archiving the change.
+- `openspec-archive-change`: use only after implementation is complete, validation passes, and the user wants the change archived.
+- `openspec-explore`: use when the user wants to think through requirements, tradeoffs, or design direction before committing to implementation.
+- `google-agents-cli-adk-code`: use when writing or refactoring ADK agent code, tools, callbacks, state handling, or app wiring.
+- `google-agents-cli-workflow`: use when the task spans local ADK development flow such as run, debug, evaluate, and general project iteration.
+- `google-agents-cli-eval`: use whenever creating, expanding, running, grading, or analyzing eval datasets and eval results.
+- `google-agents-cli-scaffold`: use when adding scaffolded ADK project structure, CI/CD, deployment plumbing, or other agents-cli-generated project assets.
+- `google-agents-cli-deploy`: use for general deploy configuration or troubleshooting for Google ADK deployments.
+- `linkedin-agent-cli-deploy`: prefer this over the broader deploy skill when the task is specifically about this repository's deployment commands or configuration.
+- `google-agents-cli-observability`: use when adding tracing, logging, telemetry, or production-debugging support for the agent runtime.
+- `google-agents-cli-publish`: use when the user explicitly wants to publish the agent to Gemini Enterprise or another supported publish target.
+- `linkedin-api-python-client`: use whenever changing LinkedIn API calls, OAuth client integration, or `linkedin-api-client` usage patterns in this repository.
+- `uv`: use for dependency management, lockfile refreshes, and environment-sync operations.
+- `ruff`: use when linting, formatting, or fixing Python style issues.
+- `ty`: use when type checking Python code or resolving static-analysis diagnostics.
+
 ## OpenSpec workflow
 
 `openspec/specs/` is the source of truth for accepted behavior. `openspec/changes/` contains proposed deltas until they are implemented, validated, and archived.
@@ -95,9 +118,14 @@ Every behavior change must include proportionate verification:
 
 - Unit-test deterministic domain logic and tool validation without calling real models or external services.
 - Integration-test ADK wiring, tool selection boundaries, and service adapters with controlled fakes or test credentials.
-- Every user-facing feature change must also include evaluation coverage under `tests/eval/` when the behavior affects agent instructions, routing, tool use, response quality, or auth-flow outcomes presented to the user.
-- Add or update ADK evaluation cases for changes to instructions, routing, tool use, or response quality.
+- Every implemented user-facing feature MUST have at least one direct automated test and, when the feature affects instructions, routing, tool use, response quality, or visible auth behavior, at least one eval case under `tests/eval/`.
+- Add or update ADK evaluation cases for changes to instructions, routing, tool use, response quality, auth-flow outcomes, and read-only safety boundaries.
+- Prefer one eval case per meaningful user-visible flow or failure mode rather than one broad prompt that tries to cover everything.
+- Keep the scaffold-default dataset path working. `agents-cli eval generate` should succeed with the repository's default files, so maintain `tests/eval/datasets/basic-dataset.json`.
+- Use `agents-cli eval generate` and `agents-cli eval grade` as the standard local eval path once ADC and other required credentials are configured.
 - Cover success, invalid input, permission denial, rate limiting, timeout, and upstream failure where relevant.
+- For every completed feature, include both happy-path coverage and the most important safety or failure-path coverage.
+- Do not mark a roadmap item complete in `README.md` until its code, tests, and eval coverage all exist and agree with the documented behavior.
 - Run the smallest relevant checks while iterating, then the full local test and lint suite before handoff.
 - Never weaken assertions or evaluation thresholds merely to make a change pass.
 

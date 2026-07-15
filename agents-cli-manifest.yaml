@@ -1,0 +1,11 @@
+name: "linkedin-agent"
+acli_version: "1.1.0"
+agent_directory: "app"
+region: "us-east1"
+base_template: "adk"
+language: "python"
+create_params:
+  deployment_target: "none"
+  session_type: "none"
+  cicd_runner: "skip"
+  agent_guidance_filename: "AGENTS.md"

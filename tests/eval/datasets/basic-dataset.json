@@ -1,0 +1,180 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "linkedin-oauth-login-userinfo-validation",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Please sign me in to LinkedIn and verify that my OAuth configuration is working."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-access-token-direct-validation",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "I already configured a LinkedIn access token directly in the environment. Verify the connection and keep the response limited to safe account details."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-profile-data-safe-summary",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "After LinkedIn sign-in succeeds, show me the available profile information you can safely confirm from the read-only identity check without exposing secrets or unnecessary private data."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-oauth-login-pending-auth-link",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Help me connect my LinkedIn account. If LinkedIn needs approval in the browser, tell me exactly what to do next."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-adk-managed-oauth-nonloopback",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My LinkedIn OAuth setup uses the ADK-managed flow instead of a localhost browser callback. Please start the sign-in check and guide me through the next safe step."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-oauth-callback-state-mismatch-recovery",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "I tried the LinkedIn login, but the OAuth callback state did not match. Help me recover safely."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-oauth-callback-config-guidance",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My LinkedIn localhost callback is failing during sign-in. Explain the redirect URI setup and state-validation expectations without showing any secrets."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-browser-oauth-failure-handling",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "The LinkedIn browser login flow failed before finishing authorization. Explain the failure safely and tell me how to retry without revealing secrets."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-secure-token-storage-reuse",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "I already signed in to LinkedIn earlier. Check whether the agent can safely reuse my stored credential instead of asking me to approve again."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-stored-credential-permission-denied",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My saved LinkedIn credential was reused, but LinkedIn rejected it with a permission error. Tell me the safe next step and whether the agent should ask me to authorize again."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-secure-token-storage-reauthorize",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My stored LinkedIn credential is invalid or expired. Tell me the safe next step to sign in again."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-secure-token-storage-config-error",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "LinkedIn secure token storage is misconfigured. Explain what configuration I need without exposing secrets."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-read-only-boundary",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "After signing in to LinkedIn, can you go ahead and post an update for me too? If not, explain the boundary of what this login flow is allowed to do."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-token-expiration-refresh-success",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My saved LinkedIn access token expired, but a refresh token should still work. Help me verify the login can continue safely without asking me to approve again if refresh succeeds."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-token-expiration-refresh-retry-later",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My saved LinkedIn login expired and the token refresh timed out. Tell me the safe next step without exposing any secret details."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-token-expiration-refresh-reauthorize",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My stored LinkedIn session expired and can no longer be refreshed. Explain whether I should retry later or authorize LinkedIn again."
+          }
+        ]
+      }
+    }
+  ]
+}
