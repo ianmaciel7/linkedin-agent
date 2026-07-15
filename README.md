@@ -57,8 +57,7 @@ Optional OAuth smoke tests:
 - Run `uv run python -c "from app.settings import LinkedInApiSettings; from app.linkedin.oauth import run_linkedin_oauth_smoke_test; import os; settings = LinkedInApiSettings.from_env(); print(run_linkedin_oauth_smoke_test(settings, os.environ['LINKEDIN_AUTH_CODE']).to_dict())"` for a direct manual smoke run.
 - Run `uv run pytest -m live tests/integration/test_linkedin_api_tool.py -q -rs` with `LINKEDIN_REDIRECT_URI=http://localhost:<porta>/callback` to trigger the automatic browser round-trip. This opens the LinkedIn consent page, waits for the localhost callback, exchanges the code, and calls `/userinfo`.
 
-The test flow returns structured success or failure output and does not create or modify LinkedIn data. Registering it on the ADK agent does not enable posting, messaging, invitations, profile edits, or any other mutating LinkedIn behavior. When the tool runs inside ADK with a `ToolContext`, it prefers ADK-managed OAuth and can request LinkedIn authorization instead of requiring a pasted access token.
-When authorization is still pending, the tool also returns a safe `authorization_url` plus short guidance so the agent can show a clickable sign-in link instead of only relying on the default credential prompt UI.
+The test flow returns structured success or failure output and does not create or modify LinkedIn data. Registering it on the ADK agent does not enable posting, messaging, invitations, profile edits, or any other mutating LinkedIn behavior. When `LINKEDIN_REDIRECT_URI` points to `localhost` or `127.0.0.1`, the login service now prefers the repository-controlled local browser callback flow instead of depending on the ADK playground credential UI. For non-local redirect URIs, it still falls back to ADK-managed OAuth.
 
 ## Development notes
 
