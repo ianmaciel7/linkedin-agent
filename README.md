@@ -1,18 +1,18 @@
 # LinkedIn Agent
 
-An ADK-based assistant for LinkedIn workflow automation and growth support.
+An ADK-based assistant focused on improving LinkedIn profile visibility and engagement.
 
 ## What it helps with
 
-- Improve profile strength with guided profile review and optimization suggestions.
-- Schedule auto-posts so content goes out consistently.
-- Manage connection workflows, including outreach and follow-up planning.
-- Support related growth tasks like content ideas, engagement tracking, and routine admin.
+- Improve profile visibility with guided profile review and optimization suggestions.
+- Increase engagement through better content planning and consistency.
+- Support audience growth with connection and follow-up workflows.
+- Track related visibility and engagement tasks without losing the safety and reviewability of agent-driven workflows.
 
 ## Project goals
 
-- Keep the agent focused on useful, repeatable LinkedIn actions.
-- Make the workflow easy to extend with new tools and tasks.
+- Keep the project centered on profile visibility and engagement outcomes.
+- Make repeatable LinkedIn growth workflows easy to extend with new tools and tasks.
 - Keep the behavior safe, explicit, and reviewable before any outward-facing action.
 
 ## Current structure
@@ -73,7 +73,7 @@ The test flow returns structured success or failure output and does not create o
 
 ## Planned capabilities
 
-- Profile strength analysis and improvement suggestions.
-- Scheduled post drafting and publishing workflows.
-- Connection request assistance and outreach sequencing.
-- Activity reminders, follow-ups, and lightweight reporting.
+- Profile visibility analysis and improvement suggestions.
+- Engagement-oriented post drafting, scheduling, and publishing workflows.
+- Connection request assistance and outreach sequencing for relevant audience growth.
+- Activity reminders, follow-ups, and lightweight reporting around visibility and engagement.
