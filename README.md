@@ -1,79 +1,301 @@
 # LinkedIn Agent
 
-An ADK-based assistant focused on improving LinkedIn profile visibility and engagement.
+An ADK-based LinkedIn assistant focused on profile visibility, engagement, and safe workflow automation.
 
-## What it helps with
+## Overview
 
-- Improve profile visibility with guided profile review and optimization suggestions.
-- Increase engagement through better content planning and consistency.
-- Support audience growth with connection and follow-up workflows.
-- Track related visibility and engagement tasks without losing the safety and reviewability of agent-driven workflows.
+This project is being built in stages. Today, the repository provides a safe read-only LinkedIn foundation:
 
-## Project goals
+- LinkedIn OAuth 2.0 login
+- OpenID Connect authentication
+- read-only `/userinfo` verification
+- localhost browser callback support
+- environment-based configuration
+- unit and integration coverage for the authentication path
 
-- Keep the project centered on profile visibility and engagement outcomes.
-- Make repeatable LinkedIn growth workflows easy to extend with new tools and tasks.
-- Keep the behavior safe, explicit, and reviewable before any outward-facing action.
+It does **not** yet publish posts, send invitations, edit profiles, or automate external LinkedIn actions.
 
-## Current structure
+The current implementation is intentionally narrow. Its purpose is to confirm that:
 
-- `app/` will contain the Google ADK app entry points and agent logic.
-- `app/linkedin/` contains read-only LinkedIn API helpers that can be tested without ADK wiring.
-- `app/tools/` contains the callable helper used to run the LinkedIn login service.
-- `openspec/` contains the spec-driven workflow for proposals, specs, and task planning.
-- `AGENTS.md` documents the operating standard for contributors and agents.
+- the LinkedIn OAuth configuration is valid
+- the user can authenticate successfully
+- the repository can safely call a read-only LinkedIn endpoint
+- the agent can expose this capability through a small ADK tool surface
 
-## LinkedIn login service
+**Current LinkedIn library:** `linkedin-api-client`
 
-The scaffold now includes a small, non-mutating LinkedIn login service backed by `linkedin-api-client` and ADK OAuth helpers. It is intended to confirm that the user can sign in and that the OAuth configuration is valid before building broader LinkedIn workflows, and it is registered on the ADK root agent as a read-only tool.
+## Current Flow
 
-Required environment variables for the test path:
+```mermaid
+flowchart TD
+    A[Start LinkedIn login check] --> B{Credentials available?}
+    B -->|Access token| C[Call LinkedIn /userinfo]
+    B -->|OAuth config only| D[Start OAuth flow]
+    D --> E{Redirect URI uses localhost?}
+    E -->|Yes| F[Open browser and wait for callback]
+    E -->|No| G[Use ADK-managed OAuth]
+    F --> C
+    G --> C
+    C --> H[Return safe account summary]
+```
 
-- `LINKEDIN_ACCESS_TOKEN`: Optional manual LinkedIn access token for direct test calls outside ADK auth handling.
-- `LINKEDIN_CLIENT_ID`: LinkedIn OAuth client ID for ADK-managed auth.
-- `LINKEDIN_CLIENT_SECRET`: LinkedIn OAuth client secret for ADK-managed auth.
-- `LINKEDIN_REDIRECT_URI`: Redirect URI configured in the LinkedIn app for ADK-managed auth.
-- `LINKEDIN_API_TEST_URL`: Optional override for the read-only test endpoint. Defaults to `https://api.linkedin.com/v2/userinfo`.
-- `LINKEDIN_API_TIMEOUT_SECONDS`: Optional request timeout in seconds. Defaults to `10`.
-- `LINKEDIN_OAUTH_SCOPES`: Optional comma-separated scopes for ADK-managed auth. Defaults to `openid,profile,email`.
-- `LINKEDIN_OAUTH_CALLBACK_TIMEOUT_SECONDS`: Optional timeout in seconds for the automatic localhost callback flow. Defaults to `180`.
+## Repository Structure
 
-Local verification steps:
+- `app/`: ADK app entry points and agent wiring
+- `app/linkedin/`: LinkedIn OAuth and API helpers
+- `app/tools/`: tool entry points exposed to the agent
+- `tests/`: unit, integration, and eval coverage
+- `openspec/`: proposals, specs, and implementation planning
 
+## Configuration
+
+Use `.env.example` as the starting point.
+
+Relevant variables:
+
+- `LINKEDIN_ACCESS_TOKEN`
+- `LINKEDIN_CLIENT_ID`
+- `LINKEDIN_CLIENT_SECRET`
+- `LINKEDIN_REDIRECT_URI`
+- `LINKEDIN_API_TEST_URL`
+- `LINKEDIN_API_TIMEOUT_SECONDS`
+- `LINKEDIN_OAUTH_SCOPES`
+- `LINKEDIN_OAUTH_CALLBACK_TIMEOUT_SECONDS`
+
+## Local Verification
+
+- `uv sync`
 - `uv run pytest`
 - `uv run python -c "import asyncio; from app.tools import run_linkedin_login_service; print(asyncio.run(run_linkedin_login_service()))"`
 - `uv run python -c "from app.agent import root_agent; print([tool.__name__ for tool in root_agent.tools])"`
 
-Optional live integration test:
+Optional live checks:
 
-- Mark the test with `@pytest.mark.live`
-- Provide a valid `LINKEDIN_ACCESS_TOKEN` for the current direct live test path
-- Run `uv run pytest -m live tests/integration/test_linkedin_api_tool.py`
+- `uv run pytest -m live tests/integration/test_linkedin_api_tool.py`
+- `uv run pytest -m live tests/integration/test_linkedin_api_tool.py -q -rs`
 
-Optional OAuth smoke tests:
+## Product Principles
 
-- Use `uv run pytest -m live tests/integration/test_linkedin_api_tool.py -q -rs` to validate OAuth config and see skip reasons clearly.
-- Set `LINKEDIN_AUTH_CODE` to a fresh LinkedIn authorization code if you want to test the full code exchange plus `/userinfo` round-trip.
-- Run `uv run python -c "from app.settings import LinkedInApiSettings; from app.linkedin.oauth import run_linkedin_oauth_smoke_test; import os; settings = LinkedInApiSettings.from_env(); print(run_linkedin_oauth_smoke_test(settings, os.environ['LINKEDIN_AUTH_CODE']).to_dict())"` for a direct manual smoke run.
-- Run `uv run pytest -m live tests/integration/test_linkedin_api_tool.py -q -rs` with `LINKEDIN_REDIRECT_URI=http://localhost:<porta>/callback` to trigger the automatic browser round-trip. This opens the LinkedIn consent page, waits for the localhost callback, exchanges the code, and calls `/userinfo`.
+- Keep external LinkedIn actions explicit and reviewable.
+- Prefer read-only validation before mutation.
+- Require user approval before visible actions such as publishing, commenting, or outreach.
+- Avoid undocumented endpoints, scraping, and bulk automation.
 
-The test flow returns structured success or failure output and does not create or modify LinkedIn data. Registering it on the ADK agent does not enable posting, messaging, invitations, profile edits, or any other mutating LinkedIn behavior. When `LINKEDIN_REDIRECT_URI` points to `localhost` or `127.0.0.1`, the login service now prefers the repository-controlled local browser callback flow instead of depending on the ADK playground credential UI. For non-local redirect URIs, it still falls back to ADK-managed OAuth.
+## Roadmap
 
-## Development notes
+Legend:
 
-- Use `uv` for dependency management and execution.
-- Install the Google ADK runtime with `uv sync`, then run the app with `uv run agents-cli playground` or `uv run agents-cli run "<prompt>"` once credentials are configured.
-- VS Code workspace MCP settings live in [`.vscode/mcp.json`](/home/ianma/workspace/linkedin-agent/.vscode/mcp.json) and currently register the `microsoftLearn` server at `https://learn.microsoft.com/api/mcp`.
-- The dev environment includes `types-requests` so static checkers can type `requests`-based integrations cleanly.
-- Start from `.env.example` for shared variable names; keep local secrets in `.env.local` and production-only values in `.env.prod`.
-- Keep repo-local skills under ``.agents/skills/``; use ``./.agents/skills/skill.sh list`` to inspect the pinned set and ``./.agents/skills/skill.sh sync`` to materialize them in a fresh environment.
-- Use `.agents/skills/linkedin-api-python-client/` when working on official LinkedIn client integration details such as Rest.li method mapping, OAuth flow selection, or safe usage of `/userinfo`, `/me`, and posting endpoints.
-- Keep changes aligned with the spec-driven workflow before implementation.
-- Validate updates with tests and linting as the app grows.
+- [x] Completed
+- [ ] Planned
+- 🔒 Requires LinkedIn approval
+- 🚫 Not supported by the public LinkedIn API
 
-## Planned capabilities
+## Delivery Model
 
-- Profile visibility analysis and improvement suggestions.
-- Engagement-oriented post drafting, scheduling, and publishing workflows.
-- Connection request assistance and outreach sequencing for relevant audience growth.
-- Activity reminders, follow-ups, and lightweight reporting around visibility and engagement.
+The roadmap is organized into two tracks:
+
+- `Product releases`: user-facing capabilities delivered in sequence
+- `Platform enablers`: internal runtime and state foundations required by later releases
+
+## Product Release Path
+
+```mermaid
+flowchart LR
+    V01[v0.1<br/>Authentication] --> V02[v0.2<br/>Profile Data]
+    V02 --> V03[v0.3<br/>Analytics]
+    V03 --> V04[v0.4<br/>Publishing]
+    V04 --> V05[v0.5<br/>Engagement Copilot]
+    V05 --> V06[v0.6<br/>Runtime Services]
+    V06 --> V10[v1.0<br/>Outreach]
+    V10 --> V11[v1.1<br/>Filters]
+    V11 --> V12[v1.2<br/>Automated Cards]
+    V12 --> V13[v1.3<br/>Internal Learning]
+    V13 --> V14[v1.4<br/>External Post Analysis]
+```
+
+## Platform Enablers
+
+```mermaid
+flowchart LR
+    P06[v0.6<br/>Runtime Services] --> P10[v1.0<br/>Stateful Outreach]
+    P10 --> P12[v1.2<br/>Approval Channels]
+    P12 --> P13[v1.3<br/>Learning Memory]
+```
+
+## Release Summary
+
+| Version | Primary goal | Key deliverables | Depends on |
+| --- | --- | --- | --- |
+| `v0.1` | Establish safe LinkedIn authentication | OAuth login, OIDC, `/userinfo`, config, tests | None |
+| `v0.2` | Build the authenticated identity layer | member URN, profile data, post metadata foundation | `v0.1` |
+| `v0.3` | Measure profile and content performance | follower metrics, post analytics, comparisons | `v0.2` |
+| `v0.4` | Enable controlled publishing | drafts, preview, publishing, scheduling | `v0.2`, `v0.3` |
+| `v0.5` | Support post-level engagement | comment/reaction reading, reply suggestions, approval gates | `v0.4` |
+| `v0.6` | Add runtime foundations | session service, memory service, persisted workflow state | `v0.1` |
+| `v1.0` | Launch assisted outreach operations | connection targeting, approval queue, limits, history | `v0.5`, `v0.6` |
+| `v1.1` | Add reusable audience segmentation | role/company filters, strategic audience selection | `v1.0` |
+| `v1.2` | Automate recurring content generation | source-driven cards, approval workflow, traceability | `v0.4`, `v1.1` |
+| `v1.3` | Learn from internal performance | growth memory, profile analysis, adaptive recommendations | `v0.3`, `v0.6`, `v1.2` |
+| `v1.4` | Learn from external benchmark content | reference post analysis, pattern extraction, knowledge base | `v1.3` |
+
+### v0.1 Authentication Foundation
+
+Primary goal: safe authentication and account validation.
+
+Release outcome: the agent can authenticate a user and validate read-only LinkedIn connectivity end to end.
+
+- [x] OAuth 2.0 login, OpenID Connect, `/userinfo`, environment config, basic error handling, and tests
+- [ ] OAuth callback and state validation
+- [ ] Secure token storage
+- [ ] Token expiration handling
+
+### v0.2 Profile Data
+
+Primary goal: authenticated identity and base profile data.
+
+Release outcome: the system can resolve the authenticated member identity and assemble a stable profile data foundation.
+
+- [x] Retrieve available profile information
+- [ ] Build and store the authenticated member URN
+- [ ] Import user-supplied profile information
+- [ ] Read the authenticated member's posts 🔒
+- [ ] Store post metadata and handle unavailable posts
+
+### v0.3 Analytics
+
+Primary goal: profile and post performance measurement.
+
+Release outcome: the product can quantify performance trends and compare content outcomes over time.
+
+- [ ] Follower count and growth history 🔒
+- [ ] Post analytics, engagement summary, and comparisons 🔒
+- [ ] Reach, reactions, comments, reshares, and historical snapshots 🔒
+- [ ] Basic profile completeness analysis and improvement suggestions
+
+### v0.4 Publishing
+
+Primary goal: controlled content creation and publication.
+
+Release outcome: users can draft, preview, approve, and publish posts through a governed workflow.
+
+- [ ] Local drafts and previews
+- [ ] User approval before publishing
+- [ ] Official API publishing and scheduling
+- [ ] Retry, deduplication, and publication history
+
+### v0.5 Engagement Copilot
+
+Primary goal: high-quality engagement support around published content.
+
+Release outcome: the product can assist with post engagement while keeping visible interactions user-approved.
+
+- [ ] Read accessible comments and reactions
+- [ ] Identify unanswered comments
+- [ ] Suggest replies and reactions
+- [ ] Require approval before visible engagement actions
+- [ ] Reply through the official API
+
+### v0.6 Runtime Services and Operational Foundation
+
+Primary goal: runtime foundation for stateful automation and approval-driven workflows.
+
+Release outcome: later automation features can rely on configured session and memory services plus persisted workflow state.
+
+- [ ] Define `session service` through environment configuration
+- [ ] Define `memory service` through environment configuration
+- [ ] Select service types from `.env` for each deployment environment
+- [ ] Establish persisted workflow state for approvals and retries
+- [ ] Support operational history needed by later outreach and learning flows
+
+### v1.0 Assisted Outreach and Engagement
+
+Primary goal: guided outreach operations with limits and approvals.
+
+Release outcome: the product can suggest and track controlled outreach actions with runtime-backed operational safety.
+
+- [ ] Recommend targets and generate personalized connection messages
+- [ ] Queue connection actions for approval
+- [ ] Support daily and monthly connection limits
+- [ ] Support a configurable comment limit, defaulting to `6`
+- [ ] Generate contextual comments for other users' posts
+- [ ] Store outreach/comment history and prevent duplicates
+
+### v1.1 Advanced Filters and Audience Selection
+
+Primary goal: reusable targeting and segmentation across workflows.
+
+Release outcome: users can define audience filters once and apply them consistently to outreach and content workflows.
+
+- [ ] Filters by role, company, industry, geography, and seniority
+- [ ] Filters for major technology companies and strategic roles
+- [ ] Reuse filters across connection, commenting, and publishing flows
+- [ ] Save reusable filters
+- [ ] Support Premium-related filters when the user provides the source data
+
+### v1.2 Automated Cards and Approval Workflow
+
+Primary goal: recurring card-style content generation from approved sources.
+
+Release outcome: the system can generate repeatable content drafts from trusted sources and route them through approval before publication.
+
+- [ ] Create automated card-style drafts
+- [ ] Pull from approved recurring sources such as Google ADK documentation
+- [ ] Generate daily or scheduled drafts
+- [ ] Send every generated post for approval before publishing
+- [ ] Support a planned WhatsApp-based approval flow or equivalent channel
+- [ ] Store source-to-post traceability
+
+### v1.3 Internal Learning, Memory, and Profile Analysis
+
+Primary goal: adaptive recommendations based on internal performance and profile evolution.
+
+Release outcome: the product can learn from the user's own history and improve future profile and content recommendations.
+
+- [ ] Learn from the user's best-performing posts 🔒
+- [ ] Identify high-engagement patterns 🔒
+- [ ] Build reusable post playbooks
+- [ ] Maintain a growth memory and adapt recommendations over time
+- [ ] Analyze the user's current profile and generate profile improvement tools
+- [ ] Turn learned patterns into future content recommendations
+
+### v1.4 External Post Analysis and Knowledge Enrichment
+
+Primary goal: external benchmark analysis to enrich the agent's content knowledge.
+
+Release outcome: the system can extract useful patterns from external reference content and incorporate them into future recommendations.
+
+- [ ] Analyze reference posts supplied by the user
+- [ ] Extract structural, thematic, and CTA patterns
+- [ ] Compare external patterns with the user's own content history
+- [ ] Improve future content recommendations from external analysis
+- [ ] Maintain a reusable knowledge base of observed post patterns
+
+### Network Assistant Track
+
+This is a cross-cutting capability track, not a separate release. It should be introduced progressively across `v1.0` and `v1.1`.
+
+- [ ] Analyze a professional selected by the user
+- [ ] Recommend `Follow`, `Connect`, or `No action`
+- [ ] Generate a personalized connection message
+- [ ] Keep invitation sending manual
+- [ ] Track suggested manual actions
+
+### Not Planned
+
+- 🚫 People You May Know automation
+- 🚫 Automatic bulk connection invitations
+- 🚫 Maximum daily connection automation
+- 🚫 Browser scraping
+- 🚫 Private or undocumented LinkedIn endpoints
+- 🚫 Guaranteed automation of LinkedIn Premium search filters
+- 🚫 Automatic mass reactions
+- 🚫 Generic automatic comments
+- 🚫 Unrestricted access to the LinkedIn home feed
+
+## Next Steps
+
+- [ ] Implement OAuth callback and state validation
+- [ ] Add secure persisted token handling
+- [ ] Add token expiration handling
+- [ ] Build and store the authenticated member URN
+- [ ] Add profile completeness analysis
