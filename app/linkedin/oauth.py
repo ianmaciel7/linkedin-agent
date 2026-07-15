@@ -192,11 +192,17 @@ def wait_for_oauth_callback(
     oauth: LinkedInOAuthSettings,
     authorization_uri: str,
     *,
+    expected_state: str | None,
     opener=webbrowser.open,
 ) -> LinkedInOAuthBrowserFlowResult:
     """Open the browser and wait for the LinkedIn redirect callback locally."""
 
     parsed_redirect = urlparse(oauth.redirect_uri)
+    normalized_expected_state = (expected_state or "").strip()
+    if not normalized_expected_state:
+        raise LinkedInOAuthError(
+            "Nao foi possivel iniciar o OAuth local do LinkedIn sem um state valido"
+        )
     if parsed_redirect.scheme != "http":
         raise LinkedInOAuthError(
             "O teste automatico via pytest exige LINKEDIN_REDIRECT_URI com esquema http"
@@ -274,6 +280,10 @@ def wait_for_oauth_callback(
         raise LinkedInOAuthError(
             "LinkedIn OAuth nao retornou authorization code no callback"
         )
+    if payload.state is None:
+        raise LinkedInOAuthError("LinkedIn OAuth nao retornou state no callback")
+    if payload.state != normalized_expected_state:
+        raise LinkedInOAuthError("LinkedIn OAuth retornou state diferente do esperado")
 
     return LinkedInOAuthBrowserFlowResult(
         authorization_uri=authorization_uri,
@@ -412,6 +422,7 @@ def run_linkedin_oauth_browser_smoke_test(
     callback_result = wait_for_oauth_callback(
         settings.oauth,
         authorization_request.authorization_uri,
+        expected_state=authorization_request.state,
         opener=opener,
     )
     return run_linkedin_oauth_smoke_test(

@@ -200,11 +200,124 @@ def test_wait_for_oauth_callback_receives_code() -> None:
     callback = wait_for_oauth_callback(
         oauth,
         authorization_request.authorization_uri,
+        expected_state=authorization_request.state,
         opener=opener,
     )
 
     assert callback.authorization_code == "code-123"
     assert callback.state == authorization_request.state
+
+
+def test_wait_for_oauth_callback_rejects_missing_expected_state() -> None:
+    port = _find_free_port()
+    oauth = LinkedInOAuthSettings(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri=f"http://localhost:{port}/callback",
+        callback_timeout_seconds=3.0,
+    )
+
+    with pytest.raises(LinkedInOAuthError, match="sem um state valido"):
+        wait_for_oauth_callback(
+            oauth,
+            "https://www.linkedin.com/oauth/v2/authorization?response_type=code",
+            expected_state=None,
+            opener=lambda _url: True,
+        )
+
+
+def test_wait_for_oauth_callback_rejects_missing_state_in_callback() -> None:
+    port = _find_free_port()
+    oauth = LinkedInOAuthSettings(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri=f"http://localhost:{port}/callback",
+        callback_timeout_seconds=3.0,
+    )
+
+    def opener(_: str) -> bool:
+        def send_callback() -> None:
+            requests.get(
+                oauth.redirect_uri,
+                params={"code": "code-123"},
+                timeout=3.0,
+            )
+
+        thread = Thread(target=send_callback, daemon=True)
+        thread.start()
+        return True
+
+    with pytest.raises(LinkedInOAuthError, match="nao retornou state"):
+        wait_for_oauth_callback(
+            oauth,
+            "https://www.linkedin.com/oauth/v2/authorization?response_type=code",
+            expected_state="expected-state",
+            opener=opener,
+        )
+
+
+def test_wait_for_oauth_callback_rejects_mismatched_state() -> None:
+    port = _find_free_port()
+    oauth = LinkedInOAuthSettings(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri=f"http://localhost:{port}/callback",
+        callback_timeout_seconds=3.0,
+    )
+
+    def opener(_: str) -> bool:
+        def send_callback() -> None:
+            requests.get(
+                oauth.redirect_uri,
+                params={"code": "code-123", "state": "wrong-state"},
+                timeout=3.0,
+            )
+
+        thread = Thread(target=send_callback, daemon=True)
+        thread.start()
+        return True
+
+    with pytest.raises(LinkedInOAuthError, match="state diferente do esperado"):
+        wait_for_oauth_callback(
+            oauth,
+            "https://www.linkedin.com/oauth/v2/authorization?response_type=code",
+            expected_state="expected-state",
+            opener=opener,
+        )
+
+
+def test_wait_for_oauth_callback_rejects_provider_error_callback() -> None:
+    port = _find_free_port()
+    oauth = LinkedInOAuthSettings(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri=f"http://localhost:{port}/callback",
+        callback_timeout_seconds=3.0,
+    )
+
+    def opener(_: str) -> bool:
+        def send_callback() -> None:
+            requests.get(
+                oauth.redirect_uri,
+                params={
+                    "error": "access_denied",
+                    "error_description": "user denied",
+                    "state": "expected-state",
+                },
+                timeout=3.0,
+            )
+
+        thread = Thread(target=send_callback, daemon=True)
+        thread.start()
+        return True
+
+    with pytest.raises(LinkedInOAuthError, match="access_denied"):
+        wait_for_oauth_callback(
+            oauth,
+            "https://www.linkedin.com/oauth/v2/authorization?response_type=code",
+            expected_state="expected-state",
+            opener=opener,
+        )
 
 
 def test_run_linkedin_oauth_browser_smoke_test_completes_round_trip() -> None:
@@ -253,6 +366,48 @@ def test_run_linkedin_oauth_browser_smoke_test_completes_round_trip() -> None:
     assert result.ok is True
     assert result.access_token == "token-123"
     assert result.userinfo == {"sub": "user-123", "name": "Jane Example"}
+
+
+def test_run_linkedin_oauth_browser_smoke_test_rejects_invalid_state_before_exchange() -> (
+    None
+):
+    port = _find_free_port()
+    oauth = LinkedInOAuthSettings(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri=f"http://localhost:{port}/callback",
+        callback_timeout_seconds=3.0,
+    )
+    settings = LinkedInApiSettings(
+        access_token=None,
+        timeout_seconds=3.0,
+        oauth=oauth,
+    )
+    session = FakeSession(
+        post_response=FakeResponse(200, {"access_token": "token-123"}),
+        get_response=FakeResponse(200, {"sub": "user-123"}),
+    )
+
+    def opener(_: str) -> bool:
+        def send_callback() -> None:
+            requests.get(
+                oauth.redirect_uri,
+                params={"code": "code-123", "state": "wrong-state"},
+                timeout=3.0,
+            )
+
+        thread = Thread(target=send_callback, daemon=True)
+        thread.start()
+        return True
+
+    with pytest.raises(LinkedInOAuthError, match="state diferente do esperado"):
+        run_linkedin_oauth_browser_smoke_test(
+            settings,
+            session=session,
+            opener=opener,
+        )
+
+    assert not hasattr(session, "post_url")
 
 
 def _find_free_port() -> int:

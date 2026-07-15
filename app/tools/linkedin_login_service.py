@@ -52,7 +52,7 @@ async def _run_linkedin_login_service(
             return {
                 "ok": False,
                 "message": str(exc),
-                "error_code": "missing_configuration",
+                "error_code": "oauth_login_failed",
                 "status_code": None,
                 "account_summary": None,
             }

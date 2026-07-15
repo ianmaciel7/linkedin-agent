@@ -9,7 +9,7 @@ This project is being built in stages. Today, the repository provides a safe rea
 - LinkedIn OAuth 2.0 login
 - OpenID Connect authentication
 - read-only `/userinfo` verification
-- localhost browser callback support
+- localhost browser callback support with OAuth `state` validation
 - environment-based configuration
 - unit and integration coverage for the authentication path
 
@@ -145,7 +145,7 @@ Primary goal: safe authentication and account validation.
 Release outcome: the agent can authenticate a user and validate read-only LinkedIn connectivity end to end.
 
 - [x] OAuth 2.0 login, OpenID Connect, `/userinfo`, environment config, basic error handling, and tests
-- [ ] OAuth callback and state validation
+- [x] OAuth callback and state validation
 - [ ] Secure token storage
 - [ ] Token expiration handling
 
@@ -294,7 +294,7 @@ This is a cross-cutting capability track, not a separate release. It should be i
 
 ## Next Steps
 
-- [ ] Implement OAuth callback and state validation
+- [x] Implement OAuth callback and state validation
 - [ ] Add secure persisted token handling
 - [ ] Add token expiration handling
 - [ ] Build and store the authenticated member URN

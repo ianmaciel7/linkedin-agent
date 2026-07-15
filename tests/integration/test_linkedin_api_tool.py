@@ -141,6 +141,12 @@ def fake_browser_login_runner(
     )
 
 
+def fake_browser_login_error_runner(
+    settings: LinkedInApiSettings,
+) -> LinkedInOAuthSmokeResult:
+    raise LinkedInOAuthError("LinkedIn OAuth retornou state diferente do esperado")
+
+
 def test_run_linkedin_login_service_with_fake_transport() -> None:
     transport = FakeTransport()
     settings = LinkedInApiSettings(
@@ -197,6 +203,40 @@ def test_run_linkedin_login_service_requests_oauth_when_no_credential_is_availab
     assert result["account_summary"] == {
         "sub": "user-789",
         "name": "Jordan Example",
+    }
+    assert tool_context.requested_auth_config is None
+
+
+def test_run_linkedin_login_service_surfaces_local_oauth_callback_validation_error() -> (
+    None
+):
+    transport = FakeTransport()
+    settings = LinkedInApiSettings(
+        access_token=None,
+        oauth=LinkedInOAuthSettings(
+            client_id="client-id",
+            client_secret="client-secret",
+            redirect_uri="http://localhost:8000/callback",
+        ),
+    )
+    client = LinkedInApiClient(settings, transport=transport)
+    tool_context = FakeToolContext()
+
+    result = asyncio.run(
+        _run_linkedin_login_service(
+            tool_context=tool_context,
+            settings=settings,
+            client=client,
+            browser_login_runner=fake_browser_login_error_runner,
+        )
+    )
+
+    assert result == {
+        "ok": False,
+        "message": "LinkedIn OAuth retornou state diferente do esperado",
+        "error_code": "oauth_login_failed",
+        "status_code": None,
+        "account_summary": None,
     }
     assert tool_context.requested_auth_config is None
 
