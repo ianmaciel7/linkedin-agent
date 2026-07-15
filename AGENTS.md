@@ -4,7 +4,7 @@
 
 This repository contains `linkedin-agent`, a Python application built with Google's Agent Development Kit (ADK). Keep the implementation aligned with current ADK conventions and treat this file as the project-wide operating guide for coding agents.
 
-The repository now includes a working read-only LinkedIn authentication and connectivity foundation. Do not claim that commands, dependencies, integrations, or deployment targets exist beyond what is present in the repository today. When introducing or removing them, update this file and `README.md` in the same change.
+The repository now includes a working read-only LinkedIn authentication and connectivity foundation with secure local token reuse for OAuth credentials. Do not claim that commands, dependencies, integrations, or deployment targets exist beyond what is present in the repository today. When introducing or removing them, update this file and `README.md` in the same change.
 
 ## Intended structure
 
@@ -79,6 +79,7 @@ Repo-local skills that must be shared across environments live under ``.agents/s
 
 - Add type annotations to public functions and tool inputs/outputs.
 - Prefer explicit data models for structured inputs and outputs.
+- Keep each `@dataclass` in its own dedicated module/file instead of defining dataclasses inline inside unrelated tool, service, or test modules.
 - Keep prompts readable and version-controlled; avoid assembling large prompts through scattered string concatenation.
 - Use async functions for network-bound operations when the underlying client supports them.
 - Inject clients and external services so unit tests can replace them with fakes.
@@ -92,6 +93,7 @@ Every behavior change must include proportionate verification:
 
 - Unit-test deterministic domain logic and tool validation without calling real models or external services.
 - Integration-test ADK wiring, tool selection boundaries, and service adapters with controlled fakes or test credentials.
+- Every user-facing feature change must also include evaluation coverage under `tests/eval/` when the behavior affects agent instructions, routing, tool use, or response quality.
 - Add or update ADK evaluation cases for changes to instructions, routing, tool use, or response quality.
 - Cover success, invalid input, permission denial, rate limiting, timeout, and upstream failure where relevant.
 - Run the smallest relevant checks while iterating, then the full local test and lint suite before handoff.
@@ -112,6 +114,7 @@ Every behavior change must include proportionate verification:
 - Read configuration from environment variables through one validated settings layer.
 - Fail early with a useful error when required configuration is missing.
 - Pin and lock dependencies. Prefer official Google ADK and provider SDKs over custom protocol implementations.
+- Use the direct `cryptography` dependency for local LinkedIn token encryption when secure token storage is involved; do not replace it with custom crypto.
 - Keep type-checker support dependencies such as `types-requests` in sync with runtime imports when static analysis covers third-party libraries without bundled stubs.
 - When adding a variable, update the settings model, `.env.example`, tests, and README documentation together.
 

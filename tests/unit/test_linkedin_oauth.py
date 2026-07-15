@@ -63,18 +63,28 @@ def make_oauth_settings() -> LinkedInOAuthSettings:
 
 def test_exchange_authorization_code_returns_access_token() -> None:
     session = FakeSession(
-        post_response=FakeResponse(200, {"access_token": "token-123"}),
+        post_response=FakeResponse(
+            200,
+            {
+                "access_token": "token-123",
+                "refresh_token": "refresh-123",
+                "expires_in": 3600,
+            },
+        ),
         get_response=FakeResponse(200, {}),
     )
 
-    access_token = exchange_authorization_code(
+    token = exchange_authorization_code(
         make_oauth_settings(),
         "code-123",
         timeout_seconds=3.0,
         session=session,
     )
 
-    assert access_token == "token-123"
+    assert token.access_token == "token-123"
+    assert token.refresh_token == "refresh-123"
+    assert token.expires_in == 3600
+    assert token.expires_at is not None
     assert session.post_data["grant_type"] == "authorization_code"
     assert session.post_data["code"] == "code-123"
 
@@ -125,6 +135,7 @@ def test_run_linkedin_oauth_smoke_test_returns_userinfo_summary() -> None:
 
     assert result.ok is True
     assert result.access_token == "token-123"
+    assert result.refresh_token is None
     assert result.userinfo == {
         "sub": "user-123",
         "name": "Jane Example",

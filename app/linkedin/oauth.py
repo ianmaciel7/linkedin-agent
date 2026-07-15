@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import time
 import webbrowser
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -73,6 +75,9 @@ class LinkedInOAuthSmokeResult:
     ok: bool
     message: str
     access_token: str | None = None
+    refresh_token: str | None = None
+    expires_at: float | None = None
+    expires_in: int | None = None
     userinfo: dict[str, str] | None = None
     status_code: int | None = None
 
@@ -83,6 +88,9 @@ class LinkedInOAuthSmokeResult:
             "ok": self.ok,
             "message": self.message,
             "access_token": self.access_token,
+            "refresh_token": self.refresh_token,
+            "expires_at": self.expires_at,
+            "expires_in": self.expires_in,
             "userinfo": self.userinfo,
             "status_code": self.status_code,
         }
@@ -112,6 +120,16 @@ class _OAuthCallbackPayload:
     state: str | None = None
     error: str | None = None
     error_description: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class LinkedInOAuthToken:
+    """Minimal OAuth token fields returned by LinkedIn."""
+
+    access_token: str
+    refresh_token: str | None = None
+    expires_at: float | None = None
+    expires_in: int | None = None
 
 
 def build_auth_config(oauth: LinkedInOAuthSettings) -> AuthConfig:
@@ -298,7 +316,7 @@ def exchange_authorization_code(
     *,
     timeout_seconds: float,
     session: OAuthSession | None = None,
-) -> str:
+) -> LinkedInOAuthToken:
     """Exchange a LinkedIn authorization code for an access token."""
 
     code = authorization_code.strip()
@@ -337,7 +355,19 @@ def exchange_authorization_code(
             f"LinkedIn token exchange failed with status {response.status_code}: {message}"
         )
 
-    return access_token
+    refresh_token = payload.get("refresh_token")
+    expires_in_value = payload.get("expires_in")
+    expires_in = _coerce_expires_in(expires_in_value)
+    expires_at = time.time() + expires_in if expires_in is not None else None
+
+    return LinkedInOAuthToken(
+        access_token=access_token,
+        refresh_token=refresh_token.strip() or None
+        if isinstance(refresh_token, str)
+        else None,
+        expires_at=expires_at,
+        expires_in=expires_in,
+    )
 
 
 def fetch_userinfo(
@@ -378,14 +408,14 @@ def run_linkedin_oauth_smoke_test(
             "LinkedIn OAuth settings are required for the manual OAuth smoke test"
         )
 
-    access_token = exchange_authorization_code(
+    token = exchange_authorization_code(
         settings.oauth,
         authorization_code,
         timeout_seconds=settings.timeout_seconds,
         session=session,
     )
     status_code, payload = fetch_userinfo(
-        access_token,
+        token.access_token,
         userinfo_url=settings.test_url,
         timeout_seconds=settings.timeout_seconds,
         session=session,
@@ -399,7 +429,10 @@ def run_linkedin_oauth_smoke_test(
     return LinkedInOAuthSmokeResult(
         ok=True,
         message="LinkedIn OAuth smoke test succeeded",
-        access_token=access_token,
+        access_token=token.access_token,
+        refresh_token=token.refresh_token,
+        expires_at=token.expires_at,
+        expires_in=token.expires_in,
         userinfo=userinfo,
         status_code=status_code,
     )
@@ -451,3 +484,28 @@ def _first_query_value(params: dict[str, list[str]], key: str) -> str | None:
         return None
     value = values[0].strip()
     return value or None
+
+
+def _coerce_expires_in(value: object) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, float):
+        if not math.isfinite(value) or value <= 0:
+            return None
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        try:
+            parsed = float(stripped)
+        except ValueError:
+            return None
+        if not math.isfinite(parsed) or parsed <= 0:
+            return None
+        return int(parsed)
+    return None

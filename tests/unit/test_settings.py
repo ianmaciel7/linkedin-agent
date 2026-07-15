@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from app.settings import LinkedInApiSettings, LinkedInOAuthSettings, SettingsError
+from app.settings import (
+    LinkedInApiSettings,
+    LinkedInOAuthSettings,
+    LinkedInTokenStorageSettings,
+    SettingsError,
+)
 
 
 def test_from_env_uses_defaults_when_optional_values_missing() -> None:
@@ -52,6 +57,8 @@ def test_from_env_accepts_complete_oauth_settings_without_access_token() -> None
             "LINKEDIN_CLIENT_ID": "client-id",
             "LINKEDIN_CLIENT_SECRET": "client-secret",
             "LINKEDIN_REDIRECT_URI": "http://localhost:8000/callback",
+            "LINKEDIN_TOKEN_STORAGE_PATH": ".secrets/linkedin-token-store.enc",
+            "LINKEDIN_TOKEN_ENCRYPTION_KEY": "n_4g4fYk3U8O0Br_HIIm0STX8ovN2e4MEXztM7o7X5Q=",
         }
     )
 
@@ -61,6 +68,10 @@ def test_from_env_accepts_complete_oauth_settings_without_access_token() -> None
         client_secret="client-secret",
         redirect_uri="http://localhost:8000/callback",
     )
+    assert settings.token_storage == LinkedInTokenStorageSettings(
+        path=".secrets/linkedin-token-store.enc",
+        encryption_key="n_4g4fYk3U8O0Br_HIIm0STX8ovN2e4MEXztM7o7X5Q=",
+    )
 
 
 def test_from_env_rejects_partial_oauth_settings() -> None:
@@ -69,5 +80,28 @@ def test_from_env_rejects_partial_oauth_settings() -> None:
             {
                 "LINKEDIN_CLIENT_ID": "client-id",
                 "LINKEDIN_CLIENT_SECRET": "client-secret",
+            }
+        )
+
+
+def test_from_env_rejects_oauth_without_token_storage_settings() -> None:
+    with pytest.raises(SettingsError, match="LINKEDIN_TOKEN_STORAGE_PATH"):
+        LinkedInApiSettings.from_env(
+            {
+                "LINKEDIN_CLIENT_ID": "client-id",
+                "LINKEDIN_CLIENT_SECRET": "client-secret",
+                "LINKEDIN_REDIRECT_URI": "http://localhost:8000/callback",
+            }
+        )
+
+
+def test_from_env_rejects_partial_token_storage_settings() -> None:
+    with pytest.raises(SettingsError, match="LINKEDIN_TOKEN_ENCRYPTION_KEY"):
+        LinkedInApiSettings.from_env(
+            {
+                "LINKEDIN_CLIENT_ID": "client-id",
+                "LINKEDIN_CLIENT_SECRET": "client-secret",
+                "LINKEDIN_REDIRECT_URI": "http://localhost:8000/callback",
+                "LINKEDIN_TOKEN_STORAGE_PATH": ".secrets/linkedin-token-store.enc",
             }
         )

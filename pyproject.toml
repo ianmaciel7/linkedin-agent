@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "An ADK-based assistant for LinkedIn workflow automation and growth support."
 requires-python = ">=3.11"
 dependencies = [
+  "cryptography>=49.0.0",
   "google-adk>=0.1.0",
   "hypothesis>=6.156.6",
   "linkedin-api-client>=0.3.0",

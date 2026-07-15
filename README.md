@@ -10,6 +10,7 @@ This project is being built in stages. Today, the repository provides a safe rea
 - OpenID Connect authentication
 - read-only `/userinfo` verification
 - localhost browser callback support with OAuth `state` validation
+- encrypted local token storage for OAuth credential reuse
 - environment-based configuration
 - unit and integration coverage for the authentication path
 
@@ -30,13 +31,15 @@ The current implementation is intentionally narrow. Its purpose is to confirm th
 flowchart TD
     A[Start LinkedIn login check] --> B{Credentials available?}
     B -->|Access token| C[Call LinkedIn /userinfo]
+    B -->|Encrypted stored token| C
     B -->|OAuth config only| D[Start OAuth flow]
     D --> E{Redirect URI uses localhost?}
     E -->|Yes| F[Open browser and wait for callback]
     E -->|No| G[Use ADK-managed OAuth]
-    F --> C
-    G --> C
-    C --> H[Return safe account summary]
+    F --> H[Persist encrypted token locally]
+    G --> H
+    H --> C
+    C --> I[Return safe account summary]
 ```
 
 ## Repository Structure
@@ -61,6 +64,19 @@ Relevant variables:
 - `LINKEDIN_API_TIMEOUT_SECONDS`
 - `LINKEDIN_OAUTH_SCOPES`
 - `LINKEDIN_OAUTH_CALLBACK_TIMEOUT_SECONDS`
+- `LINKEDIN_TOKEN_STORAGE_PATH`
+- `LINKEDIN_TOKEN_ENCRYPTION_KEY`
+
+When `LINKEDIN_ACCESS_TOKEN` is not provided and you want the OAuth login flow to persist and reuse credentials, configure both secure token storage variables:
+
+- `LINKEDIN_TOKEN_STORAGE_PATH`: local path for the encrypted token file
+- `LINKEDIN_TOKEN_ENCRYPTION_KEY`: a Fernet key used to encrypt the file at rest
+
+Generate a Fernet key locally with:
+
+- `uv run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+
+The repository stores only the minimum credential fields needed for reuse, keeps raw tokens out of tool responses, and clears invalid or rejected stored credentials before reauthorization.
 
 ## Local Verification
 
@@ -146,7 +162,7 @@ Release outcome: the agent can authenticate a user and validate read-only Linked
 
 - [x] OAuth 2.0 login, OpenID Connect, `/userinfo`, environment config, basic error handling, and tests
 - [x] OAuth callback and state validation
-- [ ] Secure token storage
+- [x] Secure token storage
 - [ ] Token expiration handling
 
 ### v0.2 Profile Data
@@ -295,7 +311,7 @@ This is a cross-cutting capability track, not a separate release. It should be i
 ## Next Steps
 
 - [x] Implement OAuth callback and state validation
-- [ ] Add secure persisted token handling
+- [x] Add secure persisted token handling
 - [ ] Add token expiration handling
 - [ ] Build and store the authenticated member URN
 - [ ] Add profile completeness analysis

@@ -695,6 +695,7 @@ name = "linkedin-agent"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "google-adk" },
     { name = "hypothesis" },
     { name = "linkedin-api-client" },
@@ -712,6 +713,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=49.0.0" },
     { name = "google-adk", specifier = ">=0.1.0" },
     { name = "hypothesis", specifier = ">=6.156.6" },
     { name = "linkedin-api-client", specifier = ">=0.3.0" },

@@ -38,6 +38,14 @@ class LinkedInOAuthSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class LinkedInTokenStorageSettings:
+    """Settings required for local encrypted LinkedIn token persistence."""
+
+    path: str
+    encryption_key: str
+
+
+@dataclass(frozen=True, slots=True)
 class LinkedInApiSettings:
     """Settings required for the read-only LinkedIn API connectivity test."""
 
@@ -45,6 +53,7 @@ class LinkedInApiSettings:
     test_url: str = DEFAULT_LINKEDIN_API_TEST_URL
     timeout_seconds: float = DEFAULT_LINKEDIN_API_TIMEOUT_SECONDS
     oauth: LinkedInOAuthSettings | None = None
+    token_storage: LinkedInTokenStorageSettings | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> LinkedInApiSettings:
@@ -76,11 +85,16 @@ class LinkedInApiSettings:
             )
 
         oauth = cls._oauth_settings_from_env(values)
+        token_storage = cls._token_storage_settings_from_env(values)
         if access_token is None and oauth is None:
             raise SettingsError(
                 "Missing LinkedIn credentials. Provide LINKEDIN_ACCESS_TOKEN or "
                 "configure LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, and "
                 "LINKEDIN_REDIRECT_URI."
+            )
+        if access_token is None and oauth is not None and token_storage is None:
+            raise SettingsError(
+                "Missing required environment variable: LINKEDIN_TOKEN_STORAGE_PATH"
             )
 
         return cls(
@@ -88,6 +102,7 @@ class LinkedInApiSettings:
             test_url=test_url,
             timeout_seconds=timeout_seconds,
             oauth=oauth,
+            token_storage=token_storage,
         )
 
     @staticmethod
@@ -175,4 +190,27 @@ class LinkedInApiSettings:
             scopes=scopes,
             credential_key=credential_key,
             callback_timeout_seconds=callback_timeout_seconds,
+        )
+
+    @staticmethod
+    def _token_storage_settings_from_env(
+        values: Mapping[str, str],
+    ) -> LinkedInTokenStorageSettings | None:
+        path = values.get("LINKEDIN_TOKEN_STORAGE_PATH", "").strip()
+        encryption_key = values.get("LINKEDIN_TOKEN_ENCRYPTION_KEY", "").strip()
+
+        if not path and not encryption_key:
+            return None
+        if not path:
+            raise SettingsError(
+                "Missing required environment variable: LINKEDIN_TOKEN_STORAGE_PATH"
+            )
+        if not encryption_key:
+            raise SettingsError(
+                "Missing required environment variable: LINKEDIN_TOKEN_ENCRYPTION_KEY"
+            )
+
+        return LinkedInTokenStorageSettings(
+            path=path,
+            encryption_key=encryption_key,
         )
