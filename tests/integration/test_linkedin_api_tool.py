@@ -125,7 +125,9 @@ class FakeToolContext:
         self.saved_auth_config = auth_config
 
 
-def fake_browser_login_runner(settings: LinkedInApiSettings) -> LinkedInOAuthSmokeResult:
+def fake_browser_login_runner(
+    settings: LinkedInApiSettings,
+) -> LinkedInOAuthSmokeResult:
     assert settings.oauth is not None
     return LinkedInOAuthSmokeResult(
         ok=True,
@@ -305,7 +307,9 @@ def test_run_linkedin_login_service_maps_upstream_failure_after_oauth_auth() -> 
     assert result["status_code"] == 500
 
 
-def test_run_linkedin_login_service_falls_back_to_adk_for_non_loopback_redirect() -> None:
+def test_run_linkedin_login_service_falls_back_to_adk_for_non_loopback_redirect() -> (
+    None
+):
     transport = FakeTransport()
     settings = LinkedInApiSettings(
         access_token=None,
