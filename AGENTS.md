@@ -4,7 +4,7 @@
 
 This repository contains `linkedin-agent`, a Python application built with Google's Agent Development Kit (ADK). Keep the implementation aligned with current ADK conventions and treat this file as the project-wide operating guide for coding agents.
 
-The repository is still being scaffolded. Do not claim that commands, dependencies, integrations, or deployment targets exist until their files are present. When introducing them, update this file and `README.md` in the same change.
+The repository now includes a working read-only LinkedIn authentication and connectivity foundation. Do not claim that commands, dependencies, integrations, or deployment targets exist beyond what is present in the repository today. When introducing or removing them, update this file and `README.md` in the same change.
 
 ## Intended structure
 
@@ -14,6 +14,8 @@ Use the standard ADK application layout:
 app/
   __init__.py        # exports `app`
   agent.py           # tools, root_agent, and App definition
+  linkedin/          # LinkedIn OAuth and API helpers
+  tools/             # ADK tool entry points
 tests/
   unit/
   integration/
@@ -24,6 +26,9 @@ openspec/
   specs/              # canonical, accepted product behavior
   changes/            # proposed changes and implementation tasks
   config.yaml         # OpenSpec project configuration
+.agents/
+  skills/             # repo-local checked-in skills
+.env.example          # local configuration template
 pyproject.toml        # metadata, Python version, dependencies, and tool config
 uv.lock              # reproducible dependency lock
 ```
@@ -46,6 +51,8 @@ uv run pytest
 uv run ruff check .
 uv run ruff format --check .
 openspec validate --all
+uv run python -c "import asyncio; from app.tools import run_linkedin_login_service; print(asyncio.run(run_linkedin_login_service()))"
+uv run python -c "from app.agent import root_agent; print([tool.__name__ for tool in root_agent.tools])"
 uv run python -c "from app.settings import LinkedInApiSettings; from app.linkedin.oauth import run_linkedin_oauth_smoke_test; import os; settings = LinkedInApiSettings.from_env(); print(run_linkedin_oauth_smoke_test(settings, os.environ['LINKEDIN_AUTH_CODE']).to_dict())"
 ```
 
