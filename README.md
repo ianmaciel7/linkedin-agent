@@ -119,48 +119,50 @@ The roadmap is organized into two tracks:
 - `Product releases`: user-facing capabilities delivered in sequence
 - `Platform enablers`: internal runtime and state foundations required by later releases
 
+Release tags MUST follow semantic versioning in the `vMAJOR.MINOR.PATCH` format. Planned roadmap milestones are written the same way, so the first authentication release is `v0.1.0`, not `v0.1`.
+
 ## Product Release Path
 
 ```mermaid
 flowchart LR
-    V01[v0.1<br/>Authentication] --> V02[v0.2<br/>Profile Data]
-    V02 --> V03[v0.3<br/>Analytics]
-    V03 --> V04[v0.4<br/>Publishing]
-    V04 --> V05[v0.5<br/>Engagement Copilot]
-    V05 --> V06[v0.6<br/>Runtime Services]
-    V06 --> V10[v1.0<br/>Outreach]
-    V10 --> V11[v1.1<br/>Filters]
-    V11 --> V12[v1.2<br/>Automated Cards]
-    V12 --> V13[v1.3<br/>Internal Learning]
-    V13 --> V14[v1.4<br/>External Post Analysis]
+    V010[v0.1.0<br/>Authentication] --> V020[v0.2.0<br/>Profile Data]
+    V020 --> V030[v0.3.0<br/>Analytics]
+    V030 --> V040[v0.4.0<br/>Publishing]
+    V040 --> V050[v0.5.0<br/>Engagement Copilot]
+    V050 --> V060[v0.6.0<br/>Runtime Services]
+    V060 --> V100[v1.0.0<br/>Outreach]
+    V100 --> V110[v1.1.0<br/>Filters]
+    V110 --> V120[v1.2.0<br/>Automated Cards]
+    V120 --> V130[v1.3.0<br/>Internal Learning]
+    V130 --> V140[v1.4.0<br/>External Post Analysis]
 ```
 
 ## Platform Enablers
 
 ```mermaid
 flowchart LR
-    P06[v0.6<br/>Runtime Services] --> P10[v1.0<br/>Stateful Outreach]
-    P10 --> P12[v1.2<br/>Approval Channels]
-    P12 --> P13[v1.3<br/>Learning Memory]
+    P060[v0.6.0<br/>Runtime Services] --> P100[v1.0.0<br/>Stateful Outreach]
+    P100 --> P120[v1.2.0<br/>Approval Channels]
+    P120 --> P130[v1.3.0<br/>Learning Memory]
 ```
 
 ## Release Summary
 
 | Version | Primary goal | Key deliverables | Depends on |
 | --- | --- | --- | --- |
-| `v0.1` | Establish safe LinkedIn authentication | OAuth login, OIDC, `/userinfo`, config, tests | None |
-| `v0.2` | Build the authenticated identity layer | member URN, profile data, post metadata foundation | `v0.1` |
-| `v0.3` | Measure profile and content performance | follower metrics, post analytics, comparisons | `v0.2` |
-| `v0.4` | Enable controlled publishing | drafts, preview, publishing, scheduling | `v0.2`, `v0.3` |
-| `v0.5` | Support post-level engagement | comment/reaction reading, reply suggestions, approval gates | `v0.4` |
-| `v0.6` | Add runtime foundations | session service, memory service, persisted workflow state | `v0.1` |
-| `v1.0` | Launch assisted outreach operations | connection targeting, approval queue, limits, history | `v0.5`, `v0.6` |
-| `v1.1` | Add reusable audience segmentation | role/company filters, strategic audience selection | `v1.0` |
-| `v1.2` | Automate recurring content generation | source-driven cards, approval workflow, traceability | `v0.4`, `v1.1` |
-| `v1.3` | Learn from internal performance | growth memory, profile analysis, adaptive recommendations | `v0.3`, `v0.6`, `v1.2` |
-| `v1.4` | Learn from external benchmark content | reference post analysis, pattern extraction, knowledge base | `v1.3` |
+| `v0.1.0` | Establish safe LinkedIn authentication | OAuth login, OIDC, `/userinfo`, config, tests | None |
+| `v0.2.0` | Build the authenticated identity layer | member URN, profile data, post metadata foundation | `v0.1.0` |
+| `v0.3.0` | Measure profile and content performance | follower metrics, post analytics, comparisons | `v0.2.0` |
+| `v0.4.0` | Enable controlled publishing | drafts, preview, publishing, scheduling | `v0.2.0`, `v0.3.0` |
+| `v0.5.0` | Support post-level engagement | comment/reaction reading, reply suggestions, approval gates | `v0.4.0` |
+| `v0.6.0` | Add runtime foundations | session service, memory service, persisted workflow state | `v0.1.0` |
+| `v1.0.0` | Launch assisted outreach operations | connection targeting, approval queue, limits, history | `v0.5.0`, `v0.6.0` |
+| `v1.1.0` | Add reusable audience segmentation | role/company filters, strategic audience selection | `v1.0.0` |
+| `v1.2.0` | Automate recurring content generation | source-driven cards, approval workflow, traceability | `v0.4.0`, `v1.1.0` |
+| `v1.3.0` | Learn from internal performance | growth memory, profile analysis, adaptive recommendations | `v0.3.0`, `v0.6.0`, `v1.2.0` |
+| `v1.4.0` | Learn from external benchmark content | reference post analysis, pattern extraction, knowledge base | `v1.3.0` |
 
-### v0.1 Authentication Foundation
+### v0.1.0 Authentication Foundation
 
 Primary goal: safe authentication and account validation.
 
@@ -171,7 +173,7 @@ Release outcome: the agent can authenticate a user and validate read-only Linked
 - [x] Secure token storage
 - [x] Token expiration handling
 
-### v0.2 Profile Data
+### v0.2.0 Profile Data
 
 Primary goal: authenticated identity and base profile data.
 
@@ -183,7 +185,7 @@ Release outcome: the system can resolve the authenticated member identity and as
 - [ ] Read the authenticated member's posts 🔒
 - [ ] Store post metadata and handle unavailable posts
 
-### v0.3 Analytics
+### v0.3.0 Analytics
 
 Primary goal: profile and post performance measurement.
 
@@ -194,7 +196,7 @@ Release outcome: the product can quantify performance trends and compare content
 - [ ] Reach, reactions, comments, reshares, and historical snapshots 🔒
 - [ ] Basic profile completeness analysis and improvement suggestions
 
-### v0.4 Publishing
+### v0.4.0 Publishing
 
 Primary goal: controlled content creation and publication.
 
@@ -205,7 +207,7 @@ Release outcome: users can draft, preview, approve, and publish posts through a 
 - [ ] Official API publishing and scheduling
 - [ ] Retry, deduplication, and publication history
 
-### v0.5 Engagement Copilot
+### v0.5.0 Engagement Copilot
 
 Primary goal: high-quality engagement support around published content.
 
@@ -217,7 +219,7 @@ Release outcome: the product can assist with post engagement while keeping visib
 - [ ] Require approval before visible engagement actions
 - [ ] Reply through the official API
 
-### v0.6 Runtime Services and Operational Foundation
+### v0.6.0 Runtime Services and Operational Foundation
 
 Primary goal: runtime foundation for stateful automation and approval-driven workflows.
 
@@ -229,7 +231,7 @@ Release outcome: later automation features can rely on configured session and me
 - [ ] Establish persisted workflow state for approvals and retries
 - [ ] Support operational history needed by later outreach and learning flows
 
-### v1.0 Assisted Outreach and Engagement
+### v1.0.0 Assisted Outreach and Engagement
 
 Primary goal: guided outreach operations with limits and approvals.
 
@@ -242,7 +244,7 @@ Release outcome: the product can suggest and track controlled outreach actions w
 - [ ] Generate contextual comments for other users' posts
 - [ ] Store outreach/comment history and prevent duplicates
 
-### v1.1 Advanced Filters and Audience Selection
+### v1.1.0 Advanced Filters and Audience Selection
 
 Primary goal: reusable targeting and segmentation across workflows.
 
@@ -254,7 +256,7 @@ Release outcome: users can define audience filters once and apply them consisten
 - [ ] Save reusable filters
 - [ ] Support Premium-related filters when the user provides the source data
 
-### v1.2 Automated Cards and Approval Workflow
+### v1.2.0 Automated Cards and Approval Workflow
 
 Primary goal: recurring card-style content generation from approved sources.
 
@@ -267,7 +269,7 @@ Release outcome: the system can generate repeatable content drafts from trusted 
 - [ ] Support a planned WhatsApp-based approval flow or equivalent channel
 - [ ] Store source-to-post traceability
 
-### v1.3 Internal Learning, Memory, and Profile Analysis
+### v1.3.0 Internal Learning, Memory, and Profile Analysis
 
 Primary goal: adaptive recommendations based on internal performance and profile evolution.
 
@@ -280,7 +282,7 @@ Release outcome: the product can learn from the user's own history and improve f
 - [ ] Analyze the user's current profile and generate profile improvement tools
 - [ ] Turn learned patterns into future content recommendations
 
-### v1.4 External Post Analysis and Knowledge Enrichment
+### v1.4.0 External Post Analysis and Knowledge Enrichment
 
 Primary goal: external benchmark analysis to enrich the agent's content knowledge.
 
@@ -294,7 +296,7 @@ Release outcome: the system can extract useful patterns from external reference 
 
 ### Network Assistant Track
 
-This is a cross-cutting capability track, not a separate release. It should be introduced progressively across `v1.0` and `v1.1`.
+This is a cross-cutting capability track, not a separate release. It should be introduced progressively across `v1.0.0` and `v1.1.0`.
 
 - [ ] Analyze a professional selected by the user
 - [ ] Recommend `Follow`, `Connect`, or `No action`

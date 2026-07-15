@@ -27,6 +27,7 @@ openspec/
   changes/            # proposed changes and implementation tasks
   config.yaml         # OpenSpec project configuration
 .agents/
+  rules/              # durable rules for checked-in agent assets
   skills/             # repo-local checked-in skills
 .env.example          # local configuration template
 pyproject.toml        # metadata, Python version, dependencies, and tool config
@@ -58,9 +59,11 @@ uv run python -c "from app.settings import LinkedInApiSettings; from app.linkedi
 
 Use the commands actually defined by the repository if they later differ. Do not hand-edit `uv.lock`; regenerate it with `uv` when dependencies change. Do not deploy or run cloud-changing commands unless the user explicitly requests it.
 
+Git tags and documented release identifiers MUST follow semantic versioning in the `vMAJOR.MINOR.PATCH` format, for example `v0.1.0`.
+
 Workspace MCP configuration lives in [`.vscode/mcp.json`](/home/ianma/workspace/linkedin-agent/.vscode/mcp.json) and currently registers the `microsoftLearn` HTTP server at `https://learn.microsoft.com/api/mcp`.
 
-Repo-local skills that must be shared across environments live under ``.agents/skills/``. When the repository adds versioned skill sources, use ``./.agents/skills/skill.sh list`` to inspect the lock file and ``./.agents/skills/skill.sh sync`` to materialize the pinned skills into the workspace copy.
+Durable policy for checked-in agent assets lives under `.agents/rules/`, with explicit rule files such as `.agents/rules/rules-index.md`. Repo-local skills that must be shared across environments live under ``.agents/skills/``. When the repository adds versioned skill sources, use ``./.agents/skills/skill.sh list`` to inspect the lock file and ``./.agents/skills/skill.sh sync`` to materialize the pinned skills into the workspace copy.
 
 ## Skill usage guide
 
@@ -96,10 +99,19 @@ Use the checked-in repo skills intentionally. Read the selected `SKILL.md` befor
 - Small bug fixes that restore already-specified behavior may proceed directly, but update the canonical spec if the behavior was undocumented.
 - Mark tasks complete only after the corresponding implementation and verification are complete.
 - Run `openspec validate --all` before handoff. Archive a change only after implementation is complete and the user requests or approves archival.
-- Do not edit generated OpenSpec agent integrations manually; refresh them with `openspec update` after upgrading OpenSpec or changing supported tools. In this repository, the generated integration files live under `.agents/`.
-- Any new skill added for this project must also have an equivalent checked-in version under `.agents/skills/`.
+
+Agent-asset-specific policy for `.agents/` lives in `.agents/rules/` and closer nested `AGENTS.md` files.
 ## Implementation conventions
 
+- Prefer one clear responsibility per file. If a file starts owning multiple concerns such as domain models, transport, orchestration, prompt text, and test doubles together, split it before adding more logic.
+- Keep modules named and scoped by concern:
+  - models/types in dedicated model or support modules
+  - transport and HTTP protocol code in client/transport modules
+  - orchestration in service modules
+  - ADK tool entry points in tool modules
+  - prompt-building or user-guidance helpers in prompt/auth helper modules
+- Do not let a single file mix both low-level provider protocol handling and high-level user workflow orchestration unless the code is still trivially small.
+- When a file grows past one main purpose, prefer extracting a new sibling module instead of adding another section to the same file.
 - Add type annotations to public functions and tool inputs/outputs.
 - Prefer explicit data models for structured inputs and outputs.
 - Prefer `@dataclass`-based models over ad-hoc dictionaries, anonymous objects, or loosely shaped helper classes whenever structured data crosses function, tool, service, or test boundaries.
