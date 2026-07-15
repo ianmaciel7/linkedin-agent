@@ -7,6 +7,7 @@ for local ADK agent evaluation.
 
 - `datasets/basic-dataset.json`: scaffold-default dataset used by `agents-cli eval generate`
 - `eval_config.yaml`: default metrics used by `agents-cli eval grade`
+- `test_agent_evaluator.py`: optional pytest wrapper for running the same dataset through `google.adk.evaluation.AgentEvaluator`
 
 ## Official local workflow
 
@@ -27,6 +28,29 @@ agents-cli eval grade
 5. Inspect the generated results in `artifacts/grade_results/`.
 6. Fix agent instructions, tool descriptions, routing, or code.
 7. Re-run eval and compare results when iterating.
+
+## Optional pytest-style eval entrypoint
+
+If you want an ADK-native pytest entrypoint similar to:
+
+```python
+from google.adk.evaluation.agent_evaluator import AgentEvaluator
+
+await AgentEvaluator.evaluate(...)
+```
+
+this repository also includes `tests/eval/test_agent_evaluator.py`.
+
+Run it explicitly because it is marked `live` and requires Google ADC:
+
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/adc.json \
+uv run pytest -m live tests/eval/test_agent_evaluator.py
+```
+
+Use this as a lightweight wrapper around the existing eval dataset. Keep the
+`agents-cli eval generate` / `agents-cli eval grade` workflow as the primary
+path for grading, comparison, and iterative analysis.
 
 ## Google-recommended practices
 
