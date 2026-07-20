@@ -5,11 +5,18 @@ Define the accepted canonical behavior for establishing read-only LinkedIn authe
 ## Requirements
 
 ### Requirement: ADK-managed LinkedIn OAuth
-The system SHALL acquire LinkedIn authorization for the OAuth service through ADK-managed OAuth rather than requiring a manually pasted access token for normal operation.
+The system SHALL acquire LinkedIn authorization for the OAuth service through a safe OAuth flow rather than requiring a manually pasted access token for normal operation.
 
-#### Scenario: Authorization required
+#### Scenario: Local authorization required
 - **WHEN** the OAuth service runs without a valid cached credential
+- **AND** the configured LinkedIn redirect URI points to `localhost` or `127.0.0.1`
+- **THEN** the system SHALL prefer the repository-controlled local browser OAuth round-trip
+
+#### Scenario: Non-local authorization required
+- **WHEN** the OAuth service runs without a valid cached credential
+- **AND** the configured LinkedIn redirect URI is not loopback-local
 - **THEN** the system SHALL request LinkedIn authorization through the ADK execution context
+- **AND** it SHALL return safe guidance the agent can use to show the user a direct authorization link and clear next steps
 
 #### Scenario: Authorization reused
 - **WHEN** the OAuth service runs with a valid cached credential for the current session
@@ -49,15 +56,19 @@ The system SHALL use the OAuth service only to establish authenticated access an
 - **THEN** the system SHALL not publish posts, send messages, send invitations, or modify profile data
 
 ### Requirement: Login result includes member URN when available
-The system SHALL include a `member_urn` field in the OAuth service success result when the URN has already been resolved and stored.
+The system SHALL include a `member_urn` field in the OAuth service success result when the URN has already been resolved and stored, so that callers receive identity context alongside the authentication confirmation without a separate tool call.
 
 #### Scenario: Login succeeds with stored URN
-- **WHEN** the OAuth service completes successfully and a resolved member URN is present in the encrypted profile store
+- **WHEN** the OAuth service completes successfully and a resolved member URN is present in the profile store
 - **THEN** the system SHALL include `member_urn` in the result alongside `ok: true` and the existing `account_summary`
 
 #### Scenario: Login succeeds without stored URN
-- **WHEN** the OAuth service completes successfully and no resolved member URN is present in the encrypted profile store
-- **THEN** the system SHALL return `ok: true` and SHALL omit `member_urn` without error
+- **WHEN** the OAuth service completes successfully and no member URN has been resolved yet
+- **THEN** the system SHALL return a result with `ok: true` and SHALL omit `member_urn` from the result without error
+
+#### Scenario: Read-only boundary preserved
+- **WHEN** the OAuth service completes successfully with or without a member URN
+- **THEN** the system SHALL not publish posts, send messages, send invitations, or modify profile data
 
 ### Requirement: Stable failure handling
 The system SHALL normalize permission denial, timeout, rate limiting, and other upstream failures after the OAuth flow begins.
