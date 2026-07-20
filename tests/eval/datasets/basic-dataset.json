@@ -34,6 +34,61 @@
       }
     },
     {
+      "eval_case_id": "linkedin-resolve-member-urn-happy-path",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Resolve my authenticated LinkedIn member URN and keep the response limited to the identity anchor you can safely confirm."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-get-profile-data-happy-path",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Show me my authenticated LinkedIn profile summary and include any user-supplied profile fields you can persist safely."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-read-member-posts-scope-granted",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Read my recent LinkedIn posts and return only normalized metadata for the first page."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-read-member-posts-permission-denied",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Try to read my LinkedIn posts. If the app does not have the required scope, explain that safely and tell me which scope is missing."
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "linkedin-read-member-posts-missing-urn",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Read my LinkedIn posts even though I have not resolved my member URN yet. Tell me the safe next step."
+          }
+        ]
+      }
+    },
+    {
       "eval_case_id": "linkedin-oauth-login-pending-auth-link",
       "prompt": {
         "role": "user",

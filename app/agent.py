@@ -7,7 +7,12 @@ import os
 from google.adk.agents import Agent
 from google.adk.apps import App
 
-from app.tools import run_linkedin_login_service
+from app.tools import (
+    run_get_profile_data,
+    run_linkedin_login_service,
+    run_read_member_posts,
+    run_resolve_member_urn,
+)
 
 DEFAULT_MODEL = os.getenv("LINKEDIN_AGENT_MODEL", "gemini-3.5-flash")
 
@@ -26,7 +31,12 @@ root_agent = Agent(
         "This tool is read-only and must not be treated as permission to publish, "
         "message, invite, or modify LinkedIn data."
     ),
-    tools=[run_linkedin_login_service],
+    tools=[
+        run_linkedin_login_service,
+        run_resolve_member_urn,
+        run_get_profile_data,
+        run_read_member_posts,
+    ],
 )
 
 app = App(name="app", root_agent=root_agent)

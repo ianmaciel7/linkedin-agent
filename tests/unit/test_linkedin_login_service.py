@@ -2,16 +2,23 @@ from __future__ import annotations
 
 import asyncio
 
+from cryptography.fernet import Fernet
 from google.adk.auth.auth_credential import OAuth2Auth
 
 from app.linkedin.client import JsonValue, LinkedInApiClient, LinkedInApiResponse
 from app.linkedin.login_service import LinkedInLoginService
+from app.linkedin.models import MemberProfile
 from app.linkedin.oauth import LinkedInOAuthSmokeResult
+from app.linkedin.profile_store import LocalEncryptedProfileStore
 from app.linkedin.token_store import (
     StoredLinkedInCredential,
     StoredLinkedInCredentialRecord,
 )
-from app.settings import LinkedInApiSettings, LinkedInOAuthSettings
+from app.settings import (
+    LinkedInApiSettings,
+    LinkedInOAuthSettings,
+    LinkedInProfileStorageSettings,
+)
 
 
 class FakeResponse:
@@ -66,7 +73,7 @@ class FakeTokenStore:
         *,
         subject: str | None = None,
     ) -> None:
-        self.save_calls.append((credential.access_token, subject))
+        self.save_calls.append(((credential.access_token or ""), subject))
         self.credential = StoredLinkedInCredential.from_oauth2(credential)
 
     def clear(self, oauth: LinkedInOAuthSettings) -> bool:
@@ -145,3 +152,29 @@ def test_login_service_reuses_stored_credential_before_browser_login() -> None:
         "sub": "user-456",
         "name": "Jordan Example",
     }
+
+
+def test_login_service_includes_stored_member_urn_when_available(tmp_path) -> None:
+    encryption_key = Fernet.generate_key().decode()
+    profile_path = tmp_path / "profile.enc"
+    LocalEncryptedProfileStore(str(profile_path), encryption_key).save(
+        MemberProfile(
+            member_urn="urn:li:member:user-456",
+            sub="user-456",
+        )
+    )
+    settings = LinkedInApiSettings(
+        access_token="token-123",
+        profile_storage=LinkedInProfileStorageSettings(
+            path=str(profile_path),
+            encryption_key=encryption_key,
+        ),
+    )
+    client = LinkedInApiClient(
+        settings,
+        transport=FakeTransport({"sub": "user-456", "name": "Jordan Example"}),
+    )
+
+    result = asyncio.run(LinkedInLoginService(settings=settings, client=client).run())
+
+    assert result["member_urn"] == "urn:li:member:user-456"

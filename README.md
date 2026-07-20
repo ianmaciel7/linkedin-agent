@@ -66,11 +66,18 @@ Relevant variables:
 - `LINKEDIN_OAUTH_CALLBACK_TIMEOUT_SECONDS`
 - `LINKEDIN_TOKEN_STORAGE_PATH`
 - `LINKEDIN_TOKEN_ENCRYPTION_KEY`
+- `LINKEDIN_PROFILE_STORAGE_PATH`
+- `LINKEDIN_POST_STORAGE_PATH`
 
 When `LINKEDIN_ACCESS_TOKEN` is not provided and you want the OAuth login flow to persist and reuse credentials, configure both secure token storage variables:
 
 - `LINKEDIN_TOKEN_STORAGE_PATH`: local path for the encrypted token file
 - `LINKEDIN_TOKEN_ENCRYPTION_KEY`: a Fernet key used to encrypt the file at rest
+
+Optional encrypted local stores:
+
+- `LINKEDIN_PROFILE_STORAGE_PATH`: local path for the encrypted member profile store
+- `LINKEDIN_POST_STORAGE_PATH`: local path for the encrypted post metadata store
 
 Generate a Fernet key locally with:
 
@@ -180,10 +187,10 @@ Primary goal: authenticated identity and base profile data.
 Release outcome: the system can resolve the authenticated member identity and assemble a stable profile data foundation.
 
 - [x] Retrieve available profile information
-- [ ] Build and store the authenticated member URN
-- [ ] Import user-supplied profile information
-- [ ] Read the authenticated member's posts 🔒
-- [ ] Store post metadata and handle unavailable posts
+- [x] Build and store the authenticated member URN
+- [x] Import user-supplied profile information
+- [x] Read the authenticated member's posts 🔒
+- [x] Store post metadata and handle unavailable posts
 
 ### v0.3.0 Analytics
 

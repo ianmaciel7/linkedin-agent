@@ -3,60 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, TypeAlias
 from urllib.parse import urlparse
 
-from linkedin_api.clients.restli.client import RestliClient
 from requests import RequestException
 from requests.exceptions import Timeout as RequestsTimeout
 
-from app.settings import LinkedInApiSettings
-
-ErrorCode = Literal[
-    "missing_configuration",
-    "permission_denied",
-    "rate_limited",
-    "timeout",
-    "upstream_failure",
-]
-JsonValue: TypeAlias = (
-    None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
+from app.linkedin.restli import build_restli_client, configure_default_timeout
+from app.linkedin.typing import (
+    ErrorCode,
+    JsonValue,
+    LinkedInApiResponse,
+    LinkedInTransport,
+    RestliClientProtocol,
 )
-
-
-class LinkedInApiResponse(Protocol):
-    """Protocol for the response object returned by the LinkedIn API client."""
-
-    @property
-    def status_code(self) -> int:
-        """Return the HTTP status code."""
-
-    @property
-    def entity(self) -> JsonValue:
-        """Return the decoded response payload."""
-
-
-class LinkedInTransport(Protocol):
-    """Protocol for the LinkedIn API client used by the helper."""
-
-    def get(self, resource_path: str, access_token: str) -> LinkedInApiResponse:
-        """Perform a read-only GET request and return the LinkedIn response."""
-
-
-class RestliSession(Protocol):
-    """Protocol for the subset of Requests session behavior we rely on."""
-
-    def send(self, prepared_request: Any, **kwargs: Any) -> Any:
-        """Send a prepared request."""
-
-
-class RestliClientProtocol(Protocol):
-    """Protocol for the subset of RestliClient used by the transport."""
-
-    session: RestliSession
-
-    def get(self, *, resource_path: str, access_token: str) -> LinkedInApiResponse:
-        """Perform a GET request via the official client shape."""
+from app.settings import LinkedInApiSettings
 
 
 class LinkedInApiClientError(RuntimeError):
@@ -97,22 +57,8 @@ class RestliLinkedInTransport:
         client: RestliClientProtocol | None = None,
         timeout_seconds: float = 10.0,
     ) -> None:
-        self._client = client or RestliClient()
-        self._timeout_seconds = timeout_seconds
-        self._configure_timeout()
-
-    def _configure_timeout(self) -> None:
-        session = getattr(self._client, "session", None)
-        if session is None or not hasattr(session, "send"):
-            return
-
-        original_send = session.send
-
-        def send(prepared_request, **kwargs):
-            kwargs.setdefault("timeout", self._timeout_seconds)
-            return original_send(prepared_request, **kwargs)
-
-        session.send = send
+        self._client = client or build_restli_client()
+        configure_default_timeout(self._client, timeout_seconds)
 
     def get(self, resource_path: str, access_token: str) -> LinkedInApiResponse:
         try:
@@ -217,7 +163,7 @@ class LinkedInApiClient:
         return f"LinkedIn API returned unexpected status {status_code}"
 
     @staticmethod
-    def _extract_account_summary(entity: object) -> dict[str, str] | None:
+    def _extract_account_summary(entity: JsonValue) -> dict[str, str] | None:
         if not isinstance(entity, dict):
             return None
 

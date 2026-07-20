@@ -18,6 +18,11 @@ from app.linkedin.oauth import (
     is_loopback_redirect_uri,
     run_linkedin_oauth_browser_smoke_test,
 )
+from app.linkedin.profile_store import (
+    LinkedInProfileStoreConfigurationError,
+    LinkedInProfileStoreInvalidRecordError,
+    LocalEncryptedProfileStore,
+)
 from app.linkedin.token_store import (
     LinkedInTokenStore,
     LinkedInTokenStoreConfigurationError,
@@ -107,9 +112,12 @@ class LinkedInLoginService:
                 return self._safe_login_result(tool_context_result)
 
             try:
-                browser_result = await asyncio.to_thread(
-                    self._browser_login_runner, self._settings
-                )
+                if self._browser_login_runner is run_linkedin_oauth_browser_smoke_test:
+                    browser_result = await asyncio.to_thread(
+                        self._browser_login_runner, self._settings
+                    )
+                else:
+                    browser_result = self._browser_login_runner(self._settings)
             except LinkedInOAuthError as exc:
                 return LinkedInApiTestResult(
                     ok=False,
@@ -274,8 +282,7 @@ class LinkedInLoginService:
             "account_summary": result.userinfo,
         }
 
-    @staticmethod
-    def _safe_login_result(result: dict[str, object]) -> dict[str, object]:
+    def _safe_login_result(self, result: dict[str, object]) -> dict[str, object]:
         safe_result = dict(result)
         account_summary = safe_result.get("account_summary")
         if isinstance(account_summary, dict):
@@ -284,7 +291,31 @@ class LinkedInLoginService:
                 for key, value in account_summary.items()
                 if key in _SAFE_ACCOUNT_SUMMARY_KEYS
             } or None
+        if safe_result.get("ok") is True:
+            member_urn = self._load_stored_member_urn()
+            if member_urn is not None:
+                safe_result["member_urn"] = member_urn
         return safe_result
+
+    def _load_stored_member_urn(self) -> str | None:
+        profile_storage = self._settings.profile_storage
+        if profile_storage is None:
+            return None
+        try:
+            store = LocalEncryptedProfileStore(
+                profile_storage.path,
+                profile_storage.encryption_key,
+            )
+            profile = store.load()
+        except (
+            LinkedInProfileStoreConfigurationError,
+            LinkedInProfileStoreInvalidRecordError,
+            OSError,
+        ):
+            return None
+        if profile is None or not profile.member_urn:
+            return None
+        return profile.member_urn
 
     def _oauth2_from_browser_result(
         self,

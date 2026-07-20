@@ -48,6 +48,17 @@ The system SHALL use the login service only to establish authenticated access an
 - **WHEN** the login service completes successfully
 - **THEN** the system SHALL not publish posts, send messages, send invitations, or modify profile data
 
+### Requirement: Login result includes member URN when available
+The system SHALL include a `member_urn` field in the login service success result when the URN has already been resolved and stored.
+
+#### Scenario: Login succeeds with stored URN
+- **WHEN** the login service completes successfully and a resolved member URN is present in the encrypted profile store
+- **THEN** the system SHALL include `member_urn` in the result alongside `ok: true` and the existing `account_summary`
+
+#### Scenario: Login succeeds without stored URN
+- **WHEN** the login service completes successfully and no resolved member URN is present in the encrypted profile store
+- **THEN** the system SHALL return `ok: true` and SHALL omit `member_urn` without error
+
 ### Requirement: Stable failure handling
 The system SHALL normalize permission denial, timeout, rate limiting, and other upstream failures after the OAuth flow begins.
 

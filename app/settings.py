@@ -47,6 +47,22 @@ class LinkedInTokenStorageSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class LinkedInProfileStorageSettings:
+    """Settings required for local encrypted LinkedIn profile persistence."""
+
+    path: str
+    encryption_key: str
+
+
+@dataclass(frozen=True, slots=True)
+class LinkedInPostStorageSettings:
+    """Settings required for local encrypted LinkedIn post metadata persistence."""
+
+    path: str
+    encryption_key: str
+
+
+@dataclass(frozen=True, slots=True)
 class LinkedInApiSettings:
     """Settings required for the read-only LinkedIn API connectivity test."""
 
@@ -55,6 +71,8 @@ class LinkedInApiSettings:
     timeout_seconds: float = DEFAULT_LINKEDIN_API_TIMEOUT_SECONDS
     oauth: LinkedInOAuthSettings | None = None
     token_storage: LinkedInTokenStorageSettings | None = None
+    profile_storage: LinkedInProfileStorageSettings | None = None
+    post_storage: LinkedInPostStorageSettings | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> LinkedInApiSettings:
@@ -103,12 +121,17 @@ class LinkedInApiSettings:
                 "Missing required environment variable: LINKEDIN_TOKEN_STORAGE_PATH"
             )
 
+        profile_storage = cls._profile_storage_settings_from_env(values)
+        post_storage = cls._post_storage_settings_from_env(values)
+
         return cls(
             access_token=access_token,
             test_url=test_url,
             timeout_seconds=timeout_seconds,
             oauth=oauth,
             token_storage=token_storage,
+            profile_storage=profile_storage,
+            post_storage=post_storage,
         )
 
     @staticmethod
@@ -220,6 +243,39 @@ class LinkedInApiSettings:
             path=path,
             encryption_key=encryption_key,
         )
+
+    @staticmethod
+    def _profile_storage_settings_from_env(
+        values: Mapping[str, str],
+    ) -> LinkedInProfileStorageSettings | None:
+        path = values.get("LINKEDIN_PROFILE_STORAGE_PATH", "").strip()
+        # Reuses the token encryption key — no additional secret required.
+        encryption_key = values.get("LINKEDIN_TOKEN_ENCRYPTION_KEY", "").strip()
+
+        if not path:
+            return None
+        if not encryption_key:
+            raise SettingsError(
+                "LINKEDIN_PROFILE_STORAGE_PATH is set but "
+                "LINKEDIN_TOKEN_ENCRYPTION_KEY is missing"
+            )
+        return LinkedInProfileStorageSettings(path=path, encryption_key=encryption_key)
+
+    @staticmethod
+    def _post_storage_settings_from_env(
+        values: Mapping[str, str],
+    ) -> LinkedInPostStorageSettings | None:
+        path = values.get("LINKEDIN_POST_STORAGE_PATH", "").strip()
+        encryption_key = values.get("LINKEDIN_TOKEN_ENCRYPTION_KEY", "").strip()
+
+        if not path:
+            return None
+        if not encryption_key:
+            raise SettingsError(
+                "LINKEDIN_POST_STORAGE_PATH is set but "
+                "LINKEDIN_TOKEN_ENCRYPTION_KEY is missing"
+            )
+        return LinkedInPostStorageSettings(path=path, encryption_key=encryption_key)
 
     @staticmethod
     def _requires_local_token_storage(oauth: LinkedInOAuthSettings) -> bool:

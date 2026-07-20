@@ -25,7 +25,7 @@ from google.adk.auth.auth_schemes import OpenIdConnectWithConfig
 from requests import RequestException
 from requests.exceptions import Timeout as RequestsTimeout
 
-from app.linkedin.client import JsonValue
+from app.linkedin.typing import ErrorCode, JsonValue
 from app.settings import LinkedInApiSettings, LinkedInOAuthSettings
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ class LinkedInOAuthRefreshTransientError(LinkedInOAuthRefreshError):
         self,
         message: str,
         *,
-        error_code: str,
+        error_code: ErrorCode,
         status_code: int | None = None,
     ) -> None:
         super().__init__(message)
