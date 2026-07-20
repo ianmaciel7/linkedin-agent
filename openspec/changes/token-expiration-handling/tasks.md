@@ -6,7 +6,7 @@
 
 ## 2. Tool flow integration
 
-- [x] 2.1 Update `app/tools/linkedin_login_service.py` to attempt refresh for eligible expired stored credentials before falling back to browser reauthorization.
+- [x] 2.1 Update `app/tools/linkedin_oauth_service.py` to attempt refresh for eligible expired stored credentials before falling back to browser reauthorization.
 - [x] 2.2 Update `app/tools/linkedin_api_check.py` to reuse the same refresh lifecycle handling and return stable safe error categories for non-refreshable or transient refresh failures.
 - [x] 2.3 Keep logs and tool responses sanitized across refresh attempt, success, rejection, unavailable-refresh, and upstream-failure paths.
 

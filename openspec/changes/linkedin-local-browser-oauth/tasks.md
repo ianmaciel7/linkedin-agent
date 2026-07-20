@@ -1,6 +1,6 @@
 ## 1. Local OAuth flow
 
-- [x] 1.1 Detect loopback redirect URIs and run the local browser OAuth flow directly from the LinkedIn login service.
+- [x] 1.1 Detect loopback redirect URIs and run the local browser OAuth flow directly from the LinkedIn OAuth service.
 - [x] 1.2 Keep ADK credential requests as the fallback for non-local redirect URIs.
 
 ## 2. Verification

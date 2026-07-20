@@ -30,7 +30,7 @@ Rationale: callback validation failures should be deterministic local errors, no
 Alternative considered: continue into token exchange and let LinkedIn reject bad requests. Rejected because it obscures the root cause and expands the surface area of an invalid callback.
 
 Cover success and failure modes with focused unit tests plus tool-level integration checks.
-Rationale: most behavior is deterministic and belongs in unit tests around the OAuth helper, while integration tests should verify that the login tool surfaces the refined failure path correctly.
+Rationale: most behavior is deterministic and belongs in unit tests around the OAuth helper, while integration tests should verify that the OAuth tool surfaces the refined failure path correctly.
 
 ## Risks / Trade-offs
 

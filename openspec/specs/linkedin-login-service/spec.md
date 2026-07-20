@@ -1,18 +1,18 @@
 ## Purpose
 
-Define the accepted canonical behavior for establishing read-only LinkedIn authenticated access through the login service.
+Define the accepted canonical behavior for establishing read-only LinkedIn authenticated access through the OAuth service.
 
 ## Requirements
 
-### Requirement: ADK-managed LinkedIn login
-The system SHALL acquire LinkedIn authorization for the login service through ADK-managed OAuth rather than requiring a manually pasted access token for normal operation.
+### Requirement: ADK-managed LinkedIn OAuth
+The system SHALL acquire LinkedIn authorization for the OAuth service through ADK-managed OAuth rather than requiring a manually pasted access token for normal operation.
 
 #### Scenario: Authorization required
-- **WHEN** the login service runs without a valid cached credential
+- **WHEN** the OAuth service runs without a valid cached credential
 - **THEN** the system SHALL request LinkedIn authorization through the ADK execution context
 
 #### Scenario: Authorization reused
-- **WHEN** the login service runs with a valid cached credential for the current session
+- **WHEN** the OAuth service runs with a valid cached credential for the current session
 - **THEN** the system SHALL reuse that credential and skip another consent prompt
 
 ### Requirement: Validated OAuth configuration
@@ -34,29 +34,29 @@ The system SHALL keep LinkedIn credentials and member identity data out of sourc
 - **THEN** it SHALL store only the credential material needed for continued authorized access and SHALL not log raw tokens
 
 #### Scenario: Login result returned
-- **WHEN** the login service returns a success or failure result
+- **WHEN** the OAuth service returns a success or failure result
 - **THEN** it SHALL not expose client secrets, access tokens, refresh tokens, or unnecessary private profile data
 
 ### Requirement: Read-only login boundary
-The system SHALL use the login service only to establish authenticated access and confirm connectivity.
+The system SHALL use the OAuth service only to establish authenticated access and confirm connectivity.
 
 #### Scenario: Successful authenticated login
 - **WHEN** the user completes authorization and the configured read-only LinkedIn endpoint is reachable
-- **THEN** the system SHALL return a structured success result for the login service
+- **THEN** the system SHALL return a structured success result for the OAuth service
 
 #### Scenario: Read-only boundary preserved
-- **WHEN** the login service completes successfully
+- **WHEN** the OAuth service completes successfully
 - **THEN** the system SHALL not publish posts, send messages, send invitations, or modify profile data
 
 ### Requirement: Login result includes member URN when available
-The system SHALL include a `member_urn` field in the login service success result when the URN has already been resolved and stored.
+The system SHALL include a `member_urn` field in the OAuth service success result when the URN has already been resolved and stored.
 
 #### Scenario: Login succeeds with stored URN
-- **WHEN** the login service completes successfully and a resolved member URN is present in the encrypted profile store
+- **WHEN** the OAuth service completes successfully and a resolved member URN is present in the encrypted profile store
 - **THEN** the system SHALL include `member_urn` in the result alongside `ok: true` and the existing `account_summary`
 
 #### Scenario: Login succeeds without stored URN
-- **WHEN** the login service completes successfully and no resolved member URN is present in the encrypted profile store
+- **WHEN** the OAuth service completes successfully and no resolved member URN is present in the encrypted profile store
 - **THEN** the system SHALL return `ok: true` and SHALL omit `member_urn` without error
 
 ### Requirement: Stable failure handling

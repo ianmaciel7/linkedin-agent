@@ -1,6 +1,6 @@
 ## 1. Pending-auth UX
 
-- [x] 1.1 Add safe pending-auth guidance fields to the LinkedIn login result, including a direct authorization URL.
+- [x] 1.1 Add safe pending-auth guidance fields to the LinkedIn OAuth result, including a direct authorization URL.
 - [x] 1.2 Update the agent instruction so it presents pending authorization as a clickable next step in plain language.
 
 ## 2. Verification

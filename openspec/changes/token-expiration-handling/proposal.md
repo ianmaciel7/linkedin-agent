@@ -5,7 +5,7 @@ The repository can already persist encrypted LinkedIn OAuth credentials, but an 
 ## What Changes
 
 - Add explicit token expiration handling for stored LinkedIn OAuth credentials, including refresh-capable recovery before falling back to reauthorization.
-- Define how the login service and LinkedIn API check classify expired, refreshed, refresh-failed, and non-refreshable credentials.
+- Define how the OAuth service and LinkedIn API check classify expired, refreshed, refresh-failed, and non-refreshable credentials.
 - Persist refreshed credentials back into secure local storage without exposing raw tokens in logs or tool responses.
 - Add configuration, test, and evaluation coverage for successful refresh, refresh rejection, missing refresh tokens, and safe fallback behavior.
 - Keep the scope read-only and local-first; this change does not add LinkedIn write actions, background refresh jobs, or hosted credential storage.

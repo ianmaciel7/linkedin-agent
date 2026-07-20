@@ -74,7 +74,7 @@ async def _resolve_access_token(
                 ok=False,
                 message=(
                     "LinkedIn access token is not available. "
-                    "Run the login tool first to authenticate."
+                    "Run the OAuth tool first to authenticate."
                 ),
                 error_code="missing_configuration",
             ).to_dict(),

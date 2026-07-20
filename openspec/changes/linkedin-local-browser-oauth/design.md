@@ -1,6 +1,6 @@
 ## Context
 
-The repository already contains a working local browser OAuth smoke flow that opens the LinkedIn consent page, listens on a local callback URI, exchanges the authorization code, and calls `/userinfo`. The ADK login tool currently does not use that path for normal local sign-in; instead it calls `request_credential(...)` and depends on the playground runtime to finish the auth exchange. In practice that runtime can override the redirect target or lose the callback function ID, producing user-facing failures unrelated to LinkedIn credentials.
+The repository already contains a working local browser OAuth smoke flow that opens the LinkedIn consent page, listens on a local callback URI, exchanges the authorization code, and calls `/userinfo`. The ADK OAuth tool currently does not use that path for normal local sign-in; instead it calls `request_credential(...)` and depends on the playground runtime to finish the auth exchange. In practice that runtime can override the redirect target or lose the callback function ID, producing user-facing failures unrelated to LinkedIn credentials.
 
 ## Goals / Non-Goals
 

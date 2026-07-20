@@ -21,7 +21,7 @@ The agent can authenticate a user and confirm LinkedIn connectivity (v0.1.0), bu
 
 ### Modified Capabilities
 
-- `linkedin-login-service`: Extend the login result to include the resolved member URN when it is available, so callers receive identity context alongside the authentication confirmation.
+- `linkedin-login-service`: Extend the OAuth result to include the resolved member URN when it is available, so callers receive identity context alongside the authentication confirmation.
 
 ## Impact
 

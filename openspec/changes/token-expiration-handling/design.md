@@ -1,6 +1,6 @@
 ## Context
 
-The current login and connectivity flows can reuse encrypted stored credentials, but the token store raises an expired-credential error before callers can inspect whether the stored record also contains a refresh token. As a result, both `app/tools/linkedin_login_service.py` and `app/tools/linkedin_api_check.py` clear the record and force reauthorization whenever `expires_at` is in the past, even though the OAuth credential may still be recoverable through the LinkedIn token endpoint.
+The current login and connectivity flows can reuse encrypted stored credentials, but the token store raises an expired-credential error before callers can inspect whether the stored record also contains a refresh token. As a result, both `app/tools/linkedin_oauth_service.py` and `app/tools/linkedin_api_check.py` clear the record and force reauthorization whenever `expires_at` is in the past, even though the OAuth credential may still be recoverable through the LinkedIn token endpoint.
 
 This change is cross-cutting because expiration handling touches the token store contract, OAuth client behavior, login-tool orchestration, settings validation, documentation, and auth-related test coverage. It must preserve the existing read-only boundary, continue to use official OAuth flows, and keep credential lifecycle telemetry sanitized.
 
@@ -9,7 +9,7 @@ This change is cross-cutting because expiration handling touches the token store
 **Goals:**
 - Allow the system to inspect expired stored credentials safely enough to determine whether refresh is possible.
 - Refresh eligible stored LinkedIn OAuth credentials through the official token endpoint before requesting a fresh browser or ADK authorization flow.
-- Classify refresh outcomes consistently across the local browser login path and the ADK-backed API check path.
+- Classify refresh outcomes consistently across the local browser OAuth path and the ADK-backed API check path.
 - Persist refreshed credentials back into encrypted local storage and keep raw credential material out of logs and tool responses.
 - Add proportionate unit, integration, and eval coverage for refresh success, refresh rejection, non-refreshable expiration, and transient upstream failures.
 

@@ -1,6 +1,6 @@
 ## Context
 
-The ADK client owns the built-in credential request UI after `request_credential(...)` is called. In the current LinkedIn login flow that means the end user may only see a generic prompt with little context about what to click next. We want to preserve the ADK-managed OAuth flow while also returning enough safe metadata for the agent to explain the next step in plain language.
+The ADK client owns the built-in credential request UI after `request_credential(...)` is called. In the current LinkedIn OAuth flow that means the end user may only see a generic prompt with little context about what to click next. We want to preserve the ADK-managed OAuth flow while also returning enough safe metadata for the agent to explain the next step in plain language.
 
 ## Goals / Non-Goals
 

@@ -1,4 +1,4 @@
-"""LinkedIn login orchestration service."""
+"""LinkedIn OAuth orchestration service."""
 
 from __future__ import annotations
 
@@ -43,8 +43,8 @@ _SAFE_ACCOUNT_SUMMARY_KEYS = frozenset({"sub", "name", "given_name", "family_nam
 logger = logging.getLogger(__name__)
 
 
-class LinkedInLoginService:
-    """Coordinate LinkedIn login flows behind a small service boundary.
+class OAuthService:
+    """Coordinate LinkedIn OAuth flows behind a small service boundary.
 
     The service follows the same general shape as ADK's native services:
     dependencies are injected at construction time, and the public method
@@ -56,14 +56,14 @@ class LinkedInLoginService:
         *,
         settings: LinkedInApiSettings | None = None,
         client: LinkedInApiClient | None = None,
-        browser_login_runner: Callable[[LinkedInApiSettings], LinkedInOAuthSmokeResult]
+        browser_oauth_runner: Callable[[LinkedInApiSettings], LinkedInOAuthSmokeResult]
         | None = None,
         token_store: LinkedInTokenStore | None = None,
     ) -> None:
         self._settings = settings or LinkedInApiSettings.from_env()
         self._client = client or LinkedInApiClient(self._settings)
-        self._browser_login_runner = (
-            browser_login_runner or run_linkedin_oauth_browser_smoke_test
+        self._browser_oauth_runner = (
+            browser_oauth_runner or run_linkedin_oauth_browser_smoke_test
         )
         self._token_store = token_store
 
@@ -71,7 +71,7 @@ class LinkedInLoginService:
         self,
         tool_context: LinkedInToolContext | None = None,
     ) -> dict[str, object]:
-        """Run the LinkedIn login flow and return a safe structured result."""
+        """Run the LinkedIn OAuth flow and return a safe structured result."""
 
         try:
             resolved_token_store = self._resolve_token_store()
@@ -83,11 +83,11 @@ class LinkedInLoginService:
             ).to_dict()
 
         if self._should_use_local_browser_oauth():
-            stored_result, reauthorization_required = self._try_stored_credential_login(
+            stored_result, reauthorization_required = self._try_stored_credential_oauth(
                 resolved_token_store
             )
             if stored_result is not None:
-                return self._safe_login_result(stored_result)
+                return self._safe_oauth_result(stored_result)
             if reauthorization_required and resolved_token_store is None:
                 return LinkedInApiTestResult(
                     ok=False,
@@ -109,15 +109,15 @@ class LinkedInLoginService:
                     tool_context_result["credential_source"] = (
                         tool_context_resolution.credential_source
                     )
-                return self._safe_login_result(tool_context_result)
+                return self._safe_oauth_result(tool_context_result)
 
             try:
-                if self._browser_login_runner is run_linkedin_oauth_browser_smoke_test:
+                if self._browser_oauth_runner is run_linkedin_oauth_browser_smoke_test:
                     browser_result = await asyncio.to_thread(
-                        self._browser_login_runner, self._settings
+                        self._browser_oauth_runner, self._settings
                     )
                 else:
-                    browser_result = self._browser_login_runner(self._settings)
+                    browser_result = self._browser_oauth_runner(self._settings)
             except LinkedInOAuthError as exc:
                 return LinkedInApiTestResult(
                     ok=False,
@@ -139,8 +139,8 @@ class LinkedInLoginService:
                         message=str(exc),
                         error_code="missing_configuration",
                     ).to_dict()
-            return self._safe_login_result(
-                self._browser_smoke_result_to_login_result(browser_result)
+            return self._safe_oauth_result(
+                self._browser_smoke_result_to_oauth_result(browser_result)
             )
 
         from app.tools.linkedin_api_check import run_linkedin_api_test
@@ -151,7 +151,7 @@ class LinkedInLoginService:
             client=self._client,
             token_store=resolved_token_store,
         )
-        return self._safe_login_result(result)
+        return self._safe_oauth_result(result)
 
     def _resolve_token_store(self) -> LinkedInTokenStore | None:
         if self._token_store is not None:
@@ -168,7 +168,7 @@ class LinkedInLoginService:
             return False
         return is_loopback_redirect_uri(oauth.redirect_uri)
 
-    def _try_stored_credential_login(
+    def _try_stored_credential_oauth(
         self,
         token_store: LinkedInTokenStore | None,
     ) -> tuple[dict[str, object] | None, bool]:
@@ -271,7 +271,7 @@ class LinkedInLoginService:
         )
 
     @staticmethod
-    def _browser_smoke_result_to_login_result(
+    def _browser_smoke_result_to_oauth_result(
         result: LinkedInOAuthSmokeResult,
     ) -> dict[str, object]:
         return {
@@ -282,7 +282,7 @@ class LinkedInLoginService:
             "account_summary": result.userinfo,
         }
 
-    def _safe_login_result(self, result: dict[str, object]) -> dict[str, object]:
+    def _safe_oauth_result(self, result: dict[str, object]) -> dict[str, object]:
         safe_result = dict(result)
         account_summary = safe_result.get("account_summary")
         if isinstance(account_summary, dict):
@@ -323,7 +323,7 @@ class LinkedInLoginService:
     ) -> OAuth2Auth:
         if self._settings.oauth is None or not browser_result.access_token:
             raise LinkedInTokenStoreConfigurationError(
-                "LinkedIn browser login did not yield a reusable access token"
+                "LinkedIn browser OAuth did not yield a reusable access token"
             )
 
         return OAuth2Auth(

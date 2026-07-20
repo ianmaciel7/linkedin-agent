@@ -26,8 +26,8 @@
 
 ## 4. LinkedIn Login Service — Member URN Extension
 
-- [x] 4.1 Modify `app/linkedin/login_service.py` to call `resolve_member_urn` and append `member_urn` to the login result when a stored URN is available; leave the result unchanged when no URN is present
-- [x] 4.2 Update unit tests in `tests/unit/test_login_service.py` to cover: login with stored URN present, login without stored URN
+- [x] 4.1 Modify `app/linkedin/oauth_service.py` to call `resolve_member_urn` and append `member_urn` to the OAuth result when a stored URN is available; leave the result unchanged when no URN is present
+- [x] 4.2 Update unit tests in `tests/unit/test_oauth_service.py` to cover: login with stored URN present, login without stored URN
 - [x] 4.3 Update the `linkedin-login-service` canonical spec at `openspec/specs/linkedin-login-service/spec.md` to include the new `member_urn` field requirement (sync step; do not archive the change yet)
 
 ## 5. Posts API Client

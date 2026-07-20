@@ -6,9 +6,9 @@ from cryptography.fernet import Fernet
 from google.adk.auth.auth_credential import OAuth2Auth
 
 from app.linkedin.client import JsonValue, LinkedInApiClient, LinkedInApiResponse
-from app.linkedin.login_service import LinkedInLoginService
 from app.linkedin.models import MemberProfile
 from app.linkedin.oauth import LinkedInOAuthSmokeResult
+from app.linkedin.oauth_service import OAuthService
 from app.linkedin.profile_store import LocalEncryptedProfileStore
 from app.linkedin.token_store import (
     StoredLinkedInCredential,
@@ -90,7 +90,7 @@ def _oauth_settings() -> LinkedInOAuthSettings:
     )
 
 
-def test_login_service_filters_account_summary_for_browser_flow() -> None:
+def test_oauth_service_filters_account_summary_for_browser_flow() -> None:
     settings = LinkedInApiSettings(access_token=None, oauth=_oauth_settings())
     client = LinkedInApiClient(
         settings,
@@ -111,10 +111,10 @@ def test_login_service_filters_account_summary_for_browser_flow() -> None:
         )
 
     result = asyncio.run(
-        LinkedInLoginService(
+        OAuthService(
             settings=settings,
             client=client,
-            browser_login_runner=browser_runner,
+            browser_oauth_runner=browser_runner,
             token_store=FakeTokenStore(),
         ).run()
     )
@@ -126,7 +126,7 @@ def test_login_service_filters_account_summary_for_browser_flow() -> None:
     }
 
 
-def test_login_service_reuses_stored_credential_before_browser_login() -> None:
+def test_oauth_service_reuses_stored_credential_before_browser_oauth() -> None:
     settings = LinkedInApiSettings(access_token=None, oauth=_oauth_settings())
     transport = FakeTransport({"sub": "user-456", "name": "Jordan Example"})
     client = LinkedInApiClient(settings, transport=transport)
@@ -138,10 +138,10 @@ def test_login_service_reuses_stored_credential_before_browser_login() -> None:
         raise AssertionError("browser flow should not run when stored credential works")
 
     result = asyncio.run(
-        LinkedInLoginService(
+        OAuthService(
             settings=settings,
             client=client,
-            browser_login_runner=browser_runner,
+            browser_oauth_runner=browser_runner,
             token_store=token_store,
         ).run()
     )
@@ -154,7 +154,7 @@ def test_login_service_reuses_stored_credential_before_browser_login() -> None:
     }
 
 
-def test_login_service_includes_stored_member_urn_when_available(tmp_path) -> None:
+def test_oauth_service_includes_stored_member_urn_when_available(tmp_path) -> None:
     encryption_key = Fernet.generate_key().decode()
     profile_path = tmp_path / "profile.enc"
     LocalEncryptedProfileStore(str(profile_path), encryption_key).save(
@@ -175,6 +175,6 @@ def test_login_service_includes_stored_member_urn_when_available(tmp_path) -> No
         transport=FakeTransport({"sub": "user-456", "name": "Jordan Example"}),
     )
 
-    result = asyncio.run(LinkedInLoginService(settings=settings, client=client).run())
+    result = asyncio.run(OAuthService(settings=settings, client=client).run())
 
     assert result["member_urn"] == "urn:li:member:user-456"

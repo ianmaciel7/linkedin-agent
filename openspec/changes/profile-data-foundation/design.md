@@ -7,7 +7,7 @@ v0.2.0 builds the identity and content layer that every subsequent feature depen
 Current modules of note:
 - `app/linkedin/client.py`: Read-only REST client backed by `linkedin-api-client`.
 - `app/linkedin/oauth.py`: OAuth flow, token exchange, and OIDC integration.
-- `app/linkedin/login_service.py`: Orchestrates the full login flow.
+- `app/linkedin/oauth_service.py`: Orchestrates the full OAuth flow.
 - `app/tools/linkedin_api_check.py`: ADK tool that confirms connectivity.
 - `app/settings.py`: Pydantic-based settings layer reading from environment.
 
@@ -20,7 +20,7 @@ Current modules of note:
 - Retrieve published posts for the authenticated member via the LinkedIn Posts API (`/rest/posts`) and normalise them into a stable metadata model.
 - Persist retrieved post metadata locally; handle unavailable or scope-gated posts gracefully.
 - Expose three new ADK tools: `resolve_member_urn`, `get_profile_data`, `read_member_posts`.
-- Add a delta spec for the `linkedin-login-service` capability to include the member URN in login results.
+- Add a delta spec for the `linkedin-login-service` capability to include the member URN in OAuth results.
 
 **Non-Goals:**
 - Editing or publishing posts (v0.4.0).
@@ -89,4 +89,4 @@ Current modules of note:
 ## Open Questions
 
 - Should `get_profile_data` attempt to call `/v2/me` for additional fields (headline, industry) when `r_liteprofile` is available, or limit itself to OIDC fields only in v0.2.0? **Tentative decision:** OIDC-only in v0.2.0; `/v2/me` enrichment is a v0.3.0 candidate.
-- Should the `resolve_member_urn` result be automatically appended to the login service result, or returned only on explicit tool invocation? **Tentative decision:** Both — the login service appends it when the URN is already resolved; the standalone tool is the explicit path.
+- Should the `resolve_member_urn` result be automatically appended to the OAuth service result, or returned only on explicit tool invocation? **Tentative decision:** Both — the OAuth service appends it when the URN is already resolved; the standalone tool is the explicit path.

@@ -6,7 +6,7 @@
 
 ## 2. Auth flow integration
 
-- [x] 2.1 Update the LinkedIn login flow to load stored credentials before prompting for reauthorization.
+- [x] 2.1 Update the LinkedIn OAuth flow to load stored credentials before prompting for reauthorization.
 - [x] 2.2 Persist newly acquired credentials through the token store and invalidate stored records on expiry, revocation, corruption, or decryption failure.
 - [x] 2.3 Keep tool responses and logs limited to safe lifecycle metadata and stable failure categories.
 

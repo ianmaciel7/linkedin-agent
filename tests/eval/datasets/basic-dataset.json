@@ -116,7 +116,7 @@
         "role": "user",
         "parts": [
           {
-            "text": "I tried the LinkedIn login, but the OAuth callback state did not match. Help me recover safely."
+            "text": "I tried the LinkedIn OAuth, but the OAuth callback state did not match. Help me recover safely."
           }
         ]
       }
@@ -138,7 +138,7 @@
         "role": "user",
         "parts": [
           {
-            "text": "The LinkedIn browser login flow failed before finishing authorization. Explain the failure safely and tell me how to retry without revealing secrets."
+            "text": "The LinkedIn browser OAuth flow failed before finishing authorization. Explain the failure safely and tell me how to retry without revealing secrets."
           }
         ]
       }
@@ -215,7 +215,7 @@
         "role": "user",
         "parts": [
           {
-            "text": "My saved LinkedIn login expired and the token refresh timed out. Tell me the safe next step without exposing any secret details."
+            "text": "My saved LinkedIn OAuth expired and the token refresh timed out. Tell me the safe next step without exposing any secret details."
           }
         ]
       }

@@ -1,10 +1,10 @@
 ## Why
 
-The LinkedIn login flow currently relies on the default ADK credential prompt when authorization is needed. That works technically, but it is not obvious to end users what they should click or whether there is a direct authorization link they can open.
+The LinkedIn OAuth flow currently relies on the default ADK credential prompt when authorization is needed. That works technically, but it is not obvious to end users what they should click or whether there is a direct authorization link they can open.
 
 ## What Changes
 
-- Return safe, user-friendly authorization guidance when the LinkedIn login tool is waiting for OAuth consent.
+- Return safe, user-friendly authorization guidance when the LinkedIn OAuth tool is waiting for OAuth consent.
 - Include a direct LinkedIn authorization URL in the pending-auth result so the agent can surface a clickable link.
 - Update agent instructions, tests, and docs so the conversational response explains the next step clearly without exposing secrets.
 

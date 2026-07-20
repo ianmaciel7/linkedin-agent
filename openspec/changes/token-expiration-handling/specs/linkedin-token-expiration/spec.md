@@ -4,7 +4,7 @@
 The system SHALL attempt an official LinkedIn OAuth token refresh before reauthorization when a stored credential is expired and includes the refresh material required for recovery.
 
 #### Scenario: Expired stored credential is refreshed successfully
-- **WHEN** the login service or LinkedIn API check loads an expired stored credential that includes a usable refresh token
+- **WHEN** the OAuth service or LinkedIn API check loads an expired stored credential that includes a usable refresh token
 - **THEN** the system SHALL exchange that refresh token through the configured LinkedIn token endpoint, persist the refreshed credential in secure storage, and continue the read-only connectivity flow without requiring a new user authorization step
 
 ### Requirement: Reauthorize only when refresh cannot restore access

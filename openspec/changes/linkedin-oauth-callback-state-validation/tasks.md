@@ -7,7 +7,7 @@
 ## 2. Verification Coverage
 
 - [x] 2.1 Add unit tests for successful loopback callbacks, missing `state`, mismatched `state`, missing authorization code, and OAuth error callbacks.
-- [x] 2.2 Add or update integration coverage to verify the login service surfaces callback validation failures cleanly and does not continue into token exchange.
+- [x] 2.2 Add or update integration coverage to verify the OAuth service surfaces callback validation failures cleanly and does not continue into token exchange.
 
 ## 3. Documentation And Validation
 

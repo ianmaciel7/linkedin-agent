@@ -18,6 +18,6 @@ The local LinkedIn OAuth flow already generates a `state` value and receives it 
 
 ## Impact
 
-- Affected code: `app/linkedin/oauth.py`, `app/tools/linkedin_login_service.py` if it needs to surface refined callback errors, and related unit/integration tests.
+- Affected code: `app/linkedin/oauth.py`, `app/tools/linkedin_oauth_service.py` if it needs to surface refined callback errors, and related unit/integration tests.
 - Affected docs: `README.md` and any auth flow notes tied to the v0.1 roadmap.
 - Security and privacy: improves OAuth CSRF protection for the local browser flow and must continue avoiding token, secret, and personal data exposure in logs or tool responses.

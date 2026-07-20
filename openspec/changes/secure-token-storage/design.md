@@ -2,7 +2,7 @@
 
 The current LinkedIn authentication foundation can complete OAuth and verify read-only access, but it does not yet provide a durable storage boundary for OAuth credentials. Existing changes intentionally stopped at session-scoped reuse to avoid premature persistence, and the roadmap now calls out secure token storage as the next missing piece in the v0.1 authentication foundation.
 
-This change crosses multiple modules because credential persistence affects settings, OAuth helpers, the login tool boundary, tests, and repository documentation. The design must preserve the current read-only safety posture, keep secrets out of logs and user-facing responses, and avoid introducing storage behavior that is hard to revoke or migrate later.
+This change crosses multiple modules because credential persistence affects settings, OAuth helpers, the OAuth tool boundary, tests, and repository documentation. The design must preserve the current read-only safety posture, keep secrets out of logs and user-facing responses, and avoid introducing storage behavior that is hard to revoke or migrate later.
 
 ## Goals / Non-Goals
 
@@ -21,7 +21,7 @@ This change crosses multiple modules because credential persistence affects sett
 
 ## Decisions
 
-Introduce a dedicated token store interface in `app/linkedin/` and keep the login service dependent on that abstraction.
+Introduce a dedicated token store interface in `app/linkedin/` and keep the OAuth service dependent on that abstraction.
 Rationale: a narrow storage contract keeps encryption, serialization, and file handling out of tool code and makes unit testing straightforward. The alternative of embedding persistence directly in the OAuth helper would blur responsibilities and make later backend changes harder.
 
 Persist only the credential fields required for authorized reuse plus minimal lookup metadata.

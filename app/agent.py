@@ -9,7 +9,7 @@ from google.adk.apps import App
 
 from app.tools import (
     run_get_profile_data,
-    run_linkedin_login_service,
+    run_linkedin_oauth_service,
     run_read_member_posts,
     run_resolve_member_urn,
 )
@@ -22,7 +22,7 @@ root_agent = Agent(
     description="A LinkedIn workflow assistant for drafting, planning, and review support.",
     instruction=(
         "You help with LinkedIn workflow planning and review. "
-        "Use the `run_linkedin_login_service` tool only when the user wants to "
+        "Use the `run_linkedin_oauth_service` tool only when the user wants to "
         "sign in to LinkedIn or verify their OAuth configuration. "
         "If the tool reports `pending_auth` and provides an `authorization_url`, "
         "respond with a short, user-friendly message that includes the URL as a "
@@ -32,7 +32,7 @@ root_agent = Agent(
         "message, invite, or modify LinkedIn data."
     ),
     tools=[
-        run_linkedin_login_service,
+        run_linkedin_oauth_service,
         run_resolve_member_urn,
         run_get_profile_data,
         run_read_member_posts,

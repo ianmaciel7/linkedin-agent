@@ -29,7 +29,7 @@ The current implementation is intentionally narrow. Its purpose is to confirm th
 
 ```mermaid
 flowchart TD
-    A[Start LinkedIn login check] --> B{Credentials available?}
+    A[Start LinkedIn OAuth check] --> B{Credentials available?}
     B -->|Access token| C[Call LinkedIn /userinfo]
     B -->|Encrypted stored token| C
     B -->|OAuth config only| D[Start OAuth flow]
@@ -69,7 +69,7 @@ Relevant variables:
 - `LINKEDIN_PROFILE_STORAGE_PATH`
 - `LINKEDIN_POST_STORAGE_PATH`
 
-When `LINKEDIN_ACCESS_TOKEN` is not provided and you want the OAuth login flow to persist and reuse credentials, configure both secure token storage variables:
+When `LINKEDIN_ACCESS_TOKEN` is not provided and you want the OAuth flow to persist and reuse credentials, configure both secure token storage variables:
 
 - `LINKEDIN_TOKEN_STORAGE_PATH`: local path for the encrypted token file
 - `LINKEDIN_TOKEN_ENCRYPTION_KEY`: a Fernet key used to encrypt the file at rest
@@ -95,7 +95,7 @@ When a stored LinkedIn access token expires, the local auth flow now behaves in 
 
 - `uv sync`
 - `uv run pytest`
-- `uv run python -c "import asyncio; from app.tools import run_linkedin_login_service; print(asyncio.run(run_linkedin_login_service()))"`
+- `uv run python -c "import asyncio; from app.tools import run_linkedin_oauth_service; print(asyncio.run(run_linkedin_oauth_service()))"`
 - `uv run python -c "from app.agent import root_agent; print([tool.__name__ for tool in root_agent.tools])"`
 
 Optional live checks:
